@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestão de Patrimônio - SENAI</title>
+    <!-- Fonte Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Ícones Bootstrap (SVG) para usar localmente ou via CDN de forma rápida -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <link rel="stylesheet" href="assets/css/style.css?v=2">
+    <!-- Biblioteca HTML5 QR Code -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- SheetJS (Geração de Excel) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Header Fixo Topo -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-senai mini">
+                <span class="logo-s">S</span>ENAI
+            </div>
+            <div class="user-profile">
+                <!-- Botão de Notificações -->
+                <button id="btnNotificacoes" class="btn-icon bell-large" title="Notificações" onclick="abrirModalNotificacoes(event)">
+                    <i class="bi bi-bell-fill"></i>
+                    <span id="badgeNotificacoes" class="badge-notificacao hidden">0</span>
+                </button>
+
+                <span id="userNameDisplay">Professor</span>
+                <button id="btnLogout" title="Sair do sistema"><i class="bi bi-box-arrow-right"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Modal de Notificações -->
+    <div id="modalNotificacoes" class="modal-overlay hidden">
+        <div class="modal-content notificacoes-modal">
+            <div class="notificacoes-header">
+                <h3><i class="bi bi-bell-fill" style="color: var(--warning);"></i> Notificações</h3>
+                <button class="btn-icon close-btn" onclick="fecharModalNotificacoes()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="notificacoes-body" id="listaNotificacoes">
+                <div class="notificacao-vazia">
+                    <i class="bi bi-bell-slash" style="font-size: 2.5rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
+                    Nenhuma notificação no momento.
+                </div>
+            </div>
+            <div class="notificacoes-footer mt-3">
+                <button class="btn-secondary w-100" onclick="fecharModalNotificacoes()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal Dinâmico (SPA) -->
+    <main class="app-main">
+
+        <!-- ======================= -->
+        <!-- ABA: QR CODE SCANNER    -->
+        <!-- ======================= -->
+        <section id="tab-scanner" class="app-section active-section fade-in">
+            <div class="section-header">
+                <h2><i class="bi bi-qr-code-scan"></i> Leitor de Patrimônio</h2>
+                <p>Aponte a câmera para a etiqueta do equipamento</p>
+            </div>
+
+            <div class="form-group glass-box" style="margin-bottom: 1rem; padding: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Sala da Auditoria:</label>
+                <select id="selectSalaScanner" class="form-control mt-2" style="padding: 10px;">
+                    <option value="">Selecione a sala onde você está...</option>
+                </select>
+            </div>
+
+            <div class="scanner-container">
+                <div id="reader" width="100%"></div>
+                <button id="btnToggleScanner" class="btn-primary mt-3 w-100" onclick="toggleScanner()"
+                    style="display: none;">
+                    <i class="bi bi-pause-circle"></i> Pausar Leitor
+                </button>
+            </div>
+
+            <!-- Entrada Manual do QR Code -->
+            <div class="glass-box mt-3 text-center">
+                <label
+                    style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 8px;">Ou
+                    digite o código do patrimônio:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="inputManualQR" class="form-control" placeholder="Ex: P001"
+                        style="flex-grow: 1;" autocomplete="off"
+                        onkeypress="if(event.key === 'Enter') submeterQRManual()">
+                    <button type="button" class="btn btn-primary" onclick="submeterQRManual()">Verificar</button>
+                </div>
+            </div>
+
+            <div id="scanResult" class="scan-result hidden glass-box mt-3">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <!-- Lista de Auditoria Abaixo do Scanner -->
+            <div id="containerListaAuditoria" class="glass-box mt-3 hidden">
+                <h3
+                    style="font-size: 1.1rem; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
+                    Itens da Sala (<span id="countItensSala">0</span>)
+                </h3>
+                <div id="listaItensAuditoria" class="itens-lista">
+                    <!-- Preenchido dinamicamente via JS -->
+                </div>
+                <button id="btnFinalizarAuditoria" type="button" class="btn btn-success mt-3 w-100 fw-bold"
+                    style="display: none;" onclick="finalizarAuditoria()">
+                    <i class="bi bi-file-earmark-excel"></i> Concluir Auditoria (Baixar Planilha)
+                </button>
+            </div>
+        </section>
+
+        <!-- ======================= -->
+        <!-- ABA: SALAS & VÍNCULO    -->
+        <!-- ======================= -->
+        <section id="tab-salas" class="app-section fade-in hidden">
+            <div class="section-header">
+                <h2><i class="bi bi-door-open"></i> Minha Sala</h2>
+                <p>Vincule-se a uma sala e veja os patrimônios</p>
+            </div>
+
+            <div class="glass-box mb-4" id="boxCriarSala">
+                <form id="criarSalaForm" class="standard-form">
+                    <div class="form-group">
+                        <label>Cadastrar Nova Sala:</label>
+                        <input type="text" id="inputNovaSala" class="form-control" required
+                            placeholder="Ex: Laboratório de Informática 3">
+                    </div>
+                    <button type="submit" class="btn-primary mt-2">Criar Sala</button>
+                    <div id="criarSalaMessage" class="form-messages mt-2"></div>
+                </form>
+            </div>
+
+            <div class="glass-box mb-4">
+                <form id="vincularSalaForm" class="standard-form">
+                    <div class="form-group">
+                        <label>Vincular a uma Sala:</label>
+                        <select id="selectSalaVincular" class="form-control" required>
+                            <option value="">Carregando salas...</option>
+                        </select>
+                    </div>
+                    <!-- O professor logado será injetado via JS na request -->
+                    <button type="submit" class="btn-primary mt-2">Salvar Vínculo</button>
+                    <div id="vincularMessage" class="form-messages mt-2"></div>
+                </form>
+            </div>
+
+            <h3>Patrimônios da Sala Atual</h3>
+            <div id="listaPatrimoniosSala" class="itens-lista">
+                <p class="text-muted">Selecione uma sala primeiro.</p>
+            </div>
+        </section>
+
+        <!-- ======================= -->
+        <!-- ABA: OCORRÊNCIAS        -->
+        <!-- ======================= -->
+        <section id="tab-ocorrencias" class="app-section fade-in hidden">
+            <div class="section-header">
+                <h2><i class="bi bi-exclamation-triangle"></i> Registrar Ocorrência</h2>
+                <p>Equipamento quebrado ou na sala errada?</p>
+            </div>
+
+            <div class="glass-box">
+                <form id="ocorrenciaForm" class="standard-form">
+
+                    <div class="info-alert mb-3">
+                        <i class="bi bi-info-circle"></i> Use o leitor de QR Code para preencher o patrimônio
+                        automaticamente.
+                    </div>
+
+                    <div class="form-group">
+                        <label>Patrimônio Encontrado:</label>
+                        <select id="selectPatrimonioOcorrencia" class="form-control" required>
+                            <option value="">Carregando todos os patrimônios (digite o código ou leia o QR)...</option>
+                        </select>
+                        <small class="text-muted">Ou leia o QR Code na aba principal.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Em qual sala foi encontrado? (Sua Sala Atual)</label>
+                        <select id="selectSalaOcorrencia" class="form-control" required></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de Ocorrência:</label>
+                        <select id="tipoOcorrencia" class="form-control" required>
+                            <option value="">Selecione o tipo de ocorrência...</option>
+                            <option value="Transferência">Transferência</option>
+                            <option value="Perda">Perda</option>
+                            <option value="Falta de Plaqueta">Falta de Plaqueta</option>
+                            <option value="Equipamento Quebrado">Equipamento Quebrado</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Descrição do Problema (Opcional):</label>
+                        <textarea id="descOcorrencia" class="form-control" rows="3"
+                            placeholder="Ex: Equipamento achado nesta sala sem aviso prévio."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn-warning w-100">Abrir Ocorrência</button>
+                    <div id="ocorrenciaMessage" class="form-messages mt-3"></div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ======================= -->
+        <!-- ABA: EMPRÉSTIMOS        -->
+        <!-- ======================= -->
+        <section id="tab-emprestimos" class="app-section fade-in hidden">
+            <div class="section-header">
+                <h2><i class="bi bi-arrow-left-right"></i> Transferir Patrimônio</h2>
+                <p>Movimentar um equipamento de uma sala para outra de forma oficial.</p>
+            </div>
+
+            <div class="glass-box">
+                <form id="emprestimoForm" class="standard-form">
+                    <div class="form-group">
+                        <label>Equipamento a transferir:</label>
+                        <select id="selectPatrimonioEmprestimo" class="form-control" required></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sala de Destino (Para onde vai?)</label>
+                        <select id="selectSalaEmprestimoDestino" class="form-control" required></select>
+                    </div>
+
+                    <button type="submit" class="btn-primary w-100 mt-2">Transferir Equipamento</button>
+                    <div id="emprestimoMessage" class="form-messages mt-3"></div>
+                </form>
+            </div>
+        </section>
+
+        <!-- ======================= -->
+        <!-- ABA: CADASTRO           -->
+        <!-- ======================= -->
+        <section id="tab-cadastro" class="app-section fade-in hidden">
+            <div class="section-header">
+                <h2><i class="bi bi-box-seam"></i> Cadastrar Patrimônio</h2>
+                <p>Registre um novo equipamento no sistema</p>
+            </div>
+
+            <div class="glass-box">
+                <form id="cadastroForm" class="standard-form">
+                    <div class="form-group">
+                        <label>Código QR da Etiqueta:</label>
+                        <input type="text" id="cadQrcode" class="form-control" required placeholder="Ex: SENAI-001"
+                            style="text-transform: uppercase;">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nome / Descrição:</label>
+                        <input type="text" id="cadNome" class="form-control" required
+                            placeholder="Ex: Notebook Dell Inspiron">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Categoria:</label>
+                        <select id="cadCategoria" class="form-control" required>
+                            <option value="">Carregando categorias...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sala Inicial:</label>
+                        <select id="cadSala" class="form-control" required>
+                            <option value="">Carregando salas...</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-primary w-100 mt-2">Salvar Patrimônio</button>
+                    <div id="cadastroMessage" class="form-messages mt-3"></div>
+                </form>
+            </div>
+        </section>
+
+        </section>
+
+    </main>
+
+    <!-- Navegação Inferior (Mobile Tabs) -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-target="tab-scanner">
+            <i class="bi bi-qr-code"></i>
+            <span>Leitor</span>
+        </button>
+        <button class="nav-item" data-target="tab-salas">
+            <i class="bi bi-houses"></i>
+            <span>Salas</span>
+        </button>
+        <button class="nav-item" data-target="tab-ocorrencias">
+            <i class="bi bi-exclamation-octagon"></i>
+            <span>Ocorrências</span>
+        </button>
+        <button class="nav-item" data-target="tab-emprestimos">
+            <i class="bi bi-arrow-repeat"></i>
+            <span>Transferir</span>
+        </button>
+        <button class="nav-item" data-target="tab-cadastro">
+            <i class="bi bi-plus-circle"></i>
+            <span>Cadastrar</span>
+        </button>
+    </nav>
+
+    <!-- Modais de Validação -->
+    <div id="modalAuditoria" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div id="modalIcon" class="modal-icon"><i class="bi bi-check-circle-fill"></i></div>
+            <h3 id="modalTitle" class="modal-title">Patrimônio Encontrado</h3>
+            <p id="modalText" class="modal-text">Equipamento validado com sucesso.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                <button id="btnAcaoModal" class="btn-primary w-100 hidden" onclick="abrirOcorrenciaViaModal()">
+                    <i class="bi bi-exclamation-triangle"></i> Abrir Ocorrência
+                </button>
+                <button id="btnCadastrarNovoModal" class="btn-primary w-100 hidden"
+                    onclick="redirecionarParaCadastro()">Cadastrar Novo Patrimônio</button>
+                <button class="btn-primary" style="background:#ddd; color:#333;" onclick="fecharModalAuditoria()">Fechar
+                    / Retomar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts da Aplicação -->
+    <script src="assets/js/utils.js?v=2"></script>
+    <script src="assets/js/auth.js?v=2"></script>
+    <script src="assets/js/api.js?v=3"></script>
+    <script src="assets/js/scanner.js?v=3"></script>
+    <script src="assets/js/app.js?v=3"></script>
+</body>
+
+</html>
