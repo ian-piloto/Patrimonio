@@ -203,14 +203,16 @@ function mostrarModalAuditoria(isCorreta, patrimonio) {
     }
 }
 
-function fecharModalAuditoria() {
+function fecharModalAuditoria(manterPausado = false) {
     document.getElementById('modalAuditoria').classList.add('hidden');
     // Reinicia botões
     document.getElementById('btnAcaoModal').classList.add('hidden');
     const btnCad = document.getElementById('btnCadastrarNovoModal');
     if (btnCad) btnCad.classList.add('hidden');
 
-    retomarLeitura();
+    if (!manterPausado) {
+        retomarLeitura();
+    }
 }
 
 function atualizarItemNaLista(qrcodeStr) {
@@ -227,12 +229,8 @@ function atualizarItemNaLista(qrcodeStr) {
 function redirecionarParaCadastro() {
     if (!tempQrCode) return;
 
-    // Fecha a modal
-    document.getElementById('modalAuditoria').classList.add('hidden');
-    // Limpa estado da modal
-    document.getElementById('btnAcaoModal').classList.add('hidden');
-    const btnCad = document.getElementById('btnCadastrarNovoModal');
-    if (btnCad) btnCad.classList.add('hidden');
+    // Fecha a modal SEM retomar o scanner para evitar leitura duplicada no mobile
+    fecharModalAuditoria(true);
 
     // Troca para a aba de cadastro
     if (typeof switchTab === 'function') {
@@ -250,7 +248,8 @@ function redirecionarParaCadastro() {
 }
 
 function abrirOcorrenciaViaModal() {
-    fecharModalAuditoria();
+    // Fecha a modal SEM retomar o scanner para evitar leitura duplicada no mobile
+    fecharModalAuditoria(true);
     if (tempPatrimonioId && tempQrCode) {
         preencherOcorrenciaRapida(tempPatrimonioId, tempQrCode);
     }
