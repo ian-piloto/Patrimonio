@@ -118,6 +118,13 @@ async function processarLeituraQR(qrcodeStr) {
                 // Atualiza UI da lista de auditoria
                 atualizarItemNaLista(qrcodeStr);
 
+                // Atualiza o painel de resumo (Real-time)
+                const itensSala = window.salasAuditadasNaSessao[salaSelecionadaId] || [];
+                const lidosCount = itensSala.filter(item => patrimoniosEscaneadosNaSessao.has(item.numero_qrcode)).length;
+                if (typeof atualizarPainelAuditoriaUI === 'function') {
+                    atualizarPainelAuditoriaUI(itensSala.length, lidosCount);
+                }
+
                 mostrarModalAuditoria(true, p);
             } else {
                 mostrarModalAuditoria(false, p);

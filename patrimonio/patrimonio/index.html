@@ -101,19 +101,45 @@
                 <!-- Preenchido via JS -->
             </div>
 
-            <!-- Lista de Auditoria Abaixo do Scanner -->
+            <!-- Painel de Resumo de Auditoria Abaixo do Scanner -->
             <div id="containerListaAuditoria" class="glass-box mt-3 hidden">
-                <h3
-                    style="font-size: 1.1rem; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
-                    Itens da Sala (<span id="countItensSala">0</span>)
-                </h3>
-                <div id="listaItensAuditoria" class="itens-lista">
+                <div class="auditoria-summary-panel">
+                    <div class="summary-header">
+                        <h3><i class="bi bi-clipboard-check"></i> Status da Auditoria</h3>
+                        <span id="labelProgressoAuditoria" class="progress-label">0%</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div id="barProgressoAuditoria" class="progress-bar-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="summary-details">
+                        <div class="summary-item">
+                            <span class="label">Total de Itens</span>
+                            <span id="countItensSala" class="value">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">Encontrados</span>
+                            <span id="countItensLidos" class="value success-text">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">Faltantes</span>
+                            <span id="countItensFaltantes" class="value danger-text">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="listaItensAuditoria" class="itens-lista mt-3">
                     <!-- Preenchido dinamicamente via JS -->
                 </div>
-                <button id="btnFinalizarAuditoria" type="button" class="btn btn-success mt-3 w-100 fw-bold"
-                    style="display: none;" onclick="finalizarAuditoria()">
-                    <i class="bi bi-file-earmark-excel"></i> Concluir Auditoria (Baixar Planilha)
-                </button>
+
+                <div class="export-container-premium mt-4">
+                    <button id="btnExportFinal" type="button" class="btn-export-wow" onclick="finalizarAuditoria('excel')">
+                        <div class="btn-wow-content">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                            <span>CONCLUIR E EXPORTAR EXCEL</span>
+                        </div>
+                        <div class="btn-wow-glow"></div>
+                    </button>
+                </div>
             </div>
         </section>
 
@@ -197,6 +223,13 @@
                             <option value="Falta de Plaqueta">Falta de Plaqueta</option>
                             <option value="Equipamento Quebrado">Equipamento Quebrado</option>
                             <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+
+                    <div id="containerSalaDestinoOcorrencia" class="form-group hidden">
+                        <label>Para qual sala deseja transferir?</label>
+                        <select id="selectSalaDestinoOcorrencia" class="form-control">
+                            <option value="">Selecione a sala de destino...</option>
                         </select>
                     </div>
 

@@ -60,13 +60,16 @@ const api = {
     },
 
     // Ocorrências
-    salvarOcorrencia: async (patrimonio_id, sala_id, tipo, descricao) => {
+    salvarOcorrencia: async (patrimonio_id, sala_id, tipo, descricao, sala_destino_id = null) => {
         const formData = new FormData();
         formData.append('action', 'salvar_ocorrencia');
         formData.append('patrimonio_id', patrimonio_id);
         formData.append('sala_id', sala_id);
         formData.append('tipo', tipo);
         formData.append('descricao', descricao);
+        if (sala_destino_id) {
+            formData.append('sala_destino_id', sala_destino_id);
+        }
 
         const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
         return await res.json();
@@ -87,12 +90,25 @@ const api = {
     // Notificações
     getNotificacoes: async () => {
         const res = await fetch(`${API_ROUTES}?action=get_notificacoes`);
-        return (await res.json()).data || [];
+        const data = await res.json();
+        return data.data || [];
     },
-
     marcarNotificacoesLidas: async () => {
+        const res = await fetch(`${API_ROUTES}?action=marcar_notificacoes_lidas`);
+        return await res.json();
+    },
+    responderTransferencia: async (notificacao_id, resposta) => {
         const formData = new FormData();
-        formData.append('action', 'marcar_notificacoes_lidas');
+        formData.append('action', 'responder_transferencia');
+        formData.append('notificacao_id', notificacao_id);
+        formData.append('resposta', resposta);
+        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
+        return await res.json();
+    },
+    executarTransferenciaAdmin: async (notificacao_id) => {
+        const formData = new FormData();
+        formData.append('action', 'executar_transferencia_admin');
+        formData.append('notificacao_id', notificacao_id);
         const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
         return await res.json();
     }

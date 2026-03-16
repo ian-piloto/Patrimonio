@@ -1,7 +1,7 @@
 <?php
 require_once 'api/db.php';
 
-$new_hash = '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUEN'; // senai123
+$new_hash = '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUENlU7iwE4m'; // senai123
 
 try {
     $stmt = $pdo->prepare("UPDATE usuarios SET senha = ?");

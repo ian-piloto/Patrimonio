@@ -1,4 +1,8 @@
 <?php
+// Desativa exibição de erros no output para não quebrar o JSON
+ini_set('display_errors', 0);
+error_reporting(0);
+
 session_start();
 header('Content-Type: application/json');
 require_once 'db.php';

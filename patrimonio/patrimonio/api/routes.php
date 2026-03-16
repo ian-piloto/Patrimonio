@@ -138,33 +138,120 @@ try {
             $sala_encontrada = $_POST['sala_id'] ?? null;
             $tipo = $_POST['tipo'] ?? 'Outro';
             $descricao = $_POST['descricao'] ?? null;
+            $sala_destino_id = $_POST['sala_destino_id'] ?? null;
 
             if (!$patrimonio_id || !$sala_encontrada || !$tipo)
                 throw new Exception("Dados incompletos para ocorrência.");
 
+            $pdo->beginTransaction();
+
             $stmt = $pdo->prepare("INSERT INTO ocorrencias (patrimonio_id, sala_encontrada_id, tipo, descricao_problema) VALUES (?, ?, ?, ?)");
             $stmt->execute([$patrimonio_id, $sala_encontrada, $tipo, $descricao]);
 
-            // --- Notificar todos os admins ---
-            $stmtPat = $pdo->prepare("SELECT nome_descricao, numero_qrcode FROM patrimonios WHERE id = ?");
-            $stmtPat->execute([$patrimonio_id]);
-            $pat = $stmtPat->fetch();
-            $stmtSala = $pdo->prepare("SELECT nome_sala FROM salas WHERE id = ?");
-            $stmtSala->execute([$sala_encontrada]);
-            $sala = $stmtSala->fetch();
+            // Dados básicos para notificação
+            $stmtDetails = $pdo->prepare("
+                SELECT p.nome_descricao, p.numero_qrcode, s.nome_sala as sala_origem 
+                FROM patrimonios p 
+                JOIN salas s ON p.sala_atual_id = s.id 
+                WHERE p.id = ?
+            ");
+            $stmtDetails->execute([$patrimonio_id]);
+            $details = $stmtDetails->fetch();
 
-            $nomeQuem = $_SESSION['usuario_nome'] ?? 'Um usuário';
-            $titulo = "Nova Ocorrência: " . ($tipo ?? 'Outro');
-            $msgNotif = "{$nomeQuem} registrou uma ocorrência ({$tipo}) para o equipamento '{$pat['nome_descricao']}' ({$pat['numero_qrcode']}) encontrado na sala '{$sala['nome_sala']}'.";
+            if ($tipo === 'Transferência' && $sala_destino_id) {
+                // Em vez de mover, notifica o professor da sala de destino
+                $stmtSalaDest = $pdo->prepare("SELECT professor_id, nome_sala FROM salas WHERE id = ?");
+                $stmtSalaDest->execute([$sala_destino_id]);
+                $salaDest = $stmtSalaDest->fetch();
 
-            $admins = $pdo->query("SELECT id FROM usuarios WHERE tipo = 'admin'")->fetchAll();
-            $stmtNotif = $pdo->prepare("INSERT INTO notificacoes (usuario_destino_id, titulo, mensagem) VALUES (?, ?, ?)");
-            foreach ($admins as $admin) {
-                $stmtNotif->execute([$admin['id'], $titulo, $msgNotif]);
+                if ($salaDest && $salaDest['professor_id']) {
+                    // Notifica o professor da sala de destino através do usuario_id vinculado
+                    $stmtUser = $pdo->prepare("SELECT usuario_id FROM professores WHERE id = ?");
+                    $stmtUser->execute([$salaDest['professor_id']]);
+                    $userDest = $stmtUser->fetch();
+
+                    if ($userDest) {
+                        $dados = json_encode([
+                            'type' => 'TRANSFER_REQUEST_PROF',
+                            'patrimonio_id' => $patrimonio_id,
+                            'sala_origem_id' => $sala_encontrada,
+                            'sala_destino_id' => $sala_destino_id
+                        ]);
+                        
+                        $msg = "O professor da sala '{$details['sala_origem']}' solicitou a transferência do item '{$details['nome_descricao']}' ({$details['numero_qrcode']}) para sua sala ('{$salaDest['nome_sala']}'). Você aceita?";
+                        
+                        $stmtNotif = $pdo->prepare("INSERT INTO notificacoes (usuario_destino_id, titulo, mensagem, dados_json) VALUES (?, ?, ?, ?)");
+                        $stmtNotif->execute([$userDest['usuario_id'], "Solicitação de Transferência", $msg, $dados]);
+                    }
+                }
             }
-            // --- Fim da notificação ---
 
+            $pdo->commit();
             echo json_encode(["status" => "success", "message" => "Ocorrência registrada com sucesso!"]);
+            break;
+
+        case 'responder_transferencia':
+            $notificacao_id = $_POST['notificacao_id'] ?? null;
+            $resposta = $_POST['resposta'] ?? ''; // 'aceitar' ou 'recusar'
+
+            if (!$notificacao_id) throw new Exception("ID da notificação obrigatório.");
+
+            $pdo->beginTransaction();
+
+            $stmtNotif = $pdo->prepare("SELECT * FROM notificacoes WHERE id = ?");
+            $stmtNotif->execute([$notificacao_id]);
+            $notif = $stmtNotif->fetch();
+
+            if (!$notif || !$notif['dados_json']) throw new Exception("Notificação inválida.");
+
+            $dados = json_decode($notif['dados_json'], true);
+            $userId = $_SESSION['usuario_id'];
+
+            if ($resposta === 'aceitar') {
+                // Notifica Admin
+                $admins = $pdo->query("SELECT id FROM usuarios WHERE tipo = 'admin'")->fetchAll();
+                $stmtAdminNotif = $pdo->prepare("INSERT INTO notificacoes (usuario_destino_id, titulo, mensagem, dados_json) VALUES (?, ?, ?, ?)");
+                
+                $dadosAdmin = json_encode(array_merge($dados, ['type' => 'TRANSFER_EXECUTE_ADMIN']));
+                $msgAdmin = "O professor aceitou a transferência do patrimônio ID {$dados['patrimonio_id']}. Clique para efetivar.";
+
+                foreach ($admins as $admin) {
+                    $stmtAdminNotif->execute([$admin['id'], "Efetivar Transferência", $msgAdmin, $dadosAdmin]);
+                }
+            }
+
+            // Marca notificação atual como lida
+            $pdo->prepare("UPDATE notificacoes SET lida = 1 WHERE id = ?")->execute([$notificacao_id]);
+
+            $pdo->commit();
+            echo json_encode(["status" => "success", "message" => "Resposta registrada!"]);
+            break;
+
+        case 'executar_transferencia_admin':
+            $notificacao_id = $_POST['notificacao_id'] ?? null;
+            if (!$notificacao_id) throw new Exception("ID da notificação obrigatório.");
+
+            $pdo->beginTransaction();
+
+            $stmtNotif = $pdo->prepare("SELECT * FROM notificacoes WHERE id = ?");
+            $stmtNotif->execute([$notificacao_id]);
+            $notif = $stmtNotif->fetch();
+
+            $dados = json_decode($notif['dados_json'], true);
+
+            // Move o patrimônio
+            $stmtMove = $pdo->prepare("UPDATE patrimonios SET sala_atual_id = ? WHERE id = ?");
+            $stmtMove->execute([$dados['sala_destino_id'], $dados['patrimonio_id']]);
+
+            // Registra histórico
+            $stmtHist = $pdo->prepare("INSERT INTO emprestimos (patrimonio_id, sala_origem_id, sala_destino_id) VALUES (?, ?, ?)");
+            $stmtHist->execute([$dados['patrimonio_id'], $dados['sala_origem_id'], $dados['sala_destino_id']]);
+
+            // Marca lida
+            $pdo->prepare("UPDATE notificacoes SET lida = 1 WHERE id = ?")->execute([$notificacao_id]);
+
+            $pdo->commit();
+            echo json_encode(["status" => "success", "message" => "Transferência concluída com sucesso!"]);
             break;
 
         case 'listar_ocorrencias':
@@ -207,7 +294,7 @@ try {
                 break;
             }
             $stmt = $pdo->prepare("
-                SELECT id, titulo, mensagem, lida, criada_em
+                SELECT id, titulo, mensagem, dados_json, lida, criada_em
                 FROM notificacoes
                 WHERE usuario_destino_id = ?
                 ORDER BY criada_em DESC
@@ -220,7 +307,8 @@ try {
         case 'marcar_notificacoes_lidas':
             $userId = $_SESSION['usuario_id'] ?? null;
             if (!$userId) throw new Exception("Não autorizado.");
-            $pdo->prepare("UPDATE notificacoes SET lida = TRUE WHERE usuario_destino_id = ?")->execute([$userId]);
+            // Marca como lidas apenas notificações que NÃO possuem dados de ação (botões)
+            $pdo->prepare("UPDATE notificacoes SET lida = TRUE WHERE usuario_destino_id = ? AND (dados_json IS NULL OR dados_json = '')")->execute([$userId]);
             echo json_encode(["status" => "success", "message" => "Notificações marcadas como lidas."]);
             break;
 
