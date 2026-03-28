@@ -313,7 +313,38 @@
                     <div id="cadastroMessage" class="form-messages mt-3"></div>
                 </form>
             </div>
-        </section>
+
+            <!-- CADASTRO EM LOTE -->
+            <div class="section-header mt-4">
+                <h2><i class="bi bi-file-earmark-excel"></i> Importar Lote (Excel)</h2>
+                <p>Envie a planilha PATRIMÔNIO_FORMATADO.xlsx original</p>
+            </div>
+            <div class="glass-box mb-5">
+                <form id="importLoteForm" class="standard-form">
+                    <div class="form-group">
+                        <label>Arquivo Excel (.xlsx ou .csv):</label>
+                        <input type="file" id="importArquivo" class="form-control" accept=".xlsx, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv" required>
+                        <small class="text-muted" style="display:block; margin-top: 5px;">O sistema lerá a linha 5 do modelo, coluna H (Nº Inventário) e K (Denominação).</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Categoria Padrão para este lote:</label>
+                        <select id="importCategoria" class="form-control" required>
+                            <option value="">Carregando categorias...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sala de Destino para este lote:</label>
+                        <select id="importSala" class="form-control" required>
+                            <option value="">Carregando salas...</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="btnImportLote" class="btn-success w-100 mt-2" style="background:var(--success); color:white; border:none; padding:12px; border-radius:8px; font-weight:600;"><i class="bi bi-cloud-upload"></i> Processar Planilha</button>
+                    <div id="importLoteMessage" class="form-messages mt-3"></div>
+                </form>
+            </div>
 
         </section>
 

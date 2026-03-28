@@ -59,6 +59,17 @@ const api = {
         return await res.json();
     },
 
+    importarLote: async (patrimonios, categoria_id, sala_id) => {
+        const formData = new FormData();
+        formData.append('action', 'importar_lote');
+        formData.append('patrimonios', JSON.stringify(patrimonios));
+        formData.append('categoria_id', categoria_id);
+        formData.append('sala_id', sala_id);
+
+        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
+        return await res.json();
+    },
+
     // Ocorrências
     salvarOcorrencia: async (patrimonio_id, sala_id, tipo, descricao, sala_destino_id = null) => {
         const formData = new FormData();

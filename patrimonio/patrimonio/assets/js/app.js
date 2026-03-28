@@ -301,6 +301,87 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ==========================================
+    // IMPORTAÇÃO EM LOTE (EXCEL/CSV)
+    // ==========================================
+    const importLoteForm = $('#importLoteForm');
+    if (importLoteForm) {
+        importLoteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const arquivoInput = $('#importArquivo');
+            const categoriaId = $('#importCategoria').value;
+            const salaId = $('#importSala').value;
+
+            if (!arquivoInput.files.length) {
+                showMessage('importLoteMessage', 'Selecione um arquivo.', 'error');
+                return;
+            }
+            if (!categoriaId || !salaId) {
+                showMessage('importLoteMessage', 'Selecione Categoria e Sala.', 'error');
+                return;
+            }
+
+            const file = arquivoInput.files[0];
+            const btn = $('#btnImportLote');
+            btn.disabled = true; 
+            btn.innerHTML = '<span class="spinner text-white" style="width: 1rem; height: 1rem; border-width: 0.15em;"></span> Processando...';
+
+            const reader = new FileReader();
+            reader.onload = async function (ev) {
+                try {
+                    const data = new Uint8Array(ev.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                    let patrimonios = [];
+                    
+                    // As colunas: 7 = QRCode (Nº Inventário), 10 = Nome (Denominação)
+                    for (let i = 4; i < json.length; i++) {
+                        const row = json[i];
+                        if (!row || row.length < 11) continue;
+                        
+                        const qrcode = (row[7] || '').toString().trim();
+                        const nome = (row[10] || '').toString().trim();
+                        
+                        if (qrcode && nome) {
+                            patrimonios.push({ qrcode, nome });
+                        }
+                    }
+
+                    if (patrimonios.length === 0) {
+                        showMessage('importLoteMessage', 'Nenhum item válido encontrado na planilha (colunas H e K vazias).', 'error');
+                        btn.disabled = false; btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Processar Planilha';
+                        return;
+                    }
+
+                    const res = await api.importarLote(patrimonios, categoriaId, salaId);
+                    
+                    if (res.status === 'success') {
+                        let msg = `✅ Processado! Sucessos: ${res.sucesso}, Falhas/Duplicados: ${res.erros_count}.`;
+                        if (res.erros_count > 0 && res.detalhes_erro) {
+                            msg += `<br><small style="color:red; display:block; max-height:100px; overflow-y:auto; text-align:left; line-height:1.2; padding:5px; background:rgba(255,0,0,0.1); border-radius:4px;">`;
+                            msg += res.detalhes_erro.slice(0, 5).join('<br>');
+                            if (res.detalhes_erro.length > 5) msg += `<br>...mais ${res.detalhes_erro.length - 5} ocultos.</small>`;
+                            else msg += `</small>`;
+                        }
+                        showMessage('importLoteMessage', msg, 'success');
+                        importLoteForm.reset();
+                    } else {
+                        showMessage('importLoteMessage', res.mensagem || 'Erro na API.', 'error');
+                    }
+                } catch (err) {
+                    console.error('Erro de Excel:', err);
+                    showMessage('importLoteMessage', 'Erro ao ler o arquivo XLSX/CSV.', 'error');
+                } finally {
+                    btn.disabled = false; btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Processar Planilha';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    // ==========================================
     // FUNCIONALIDADE: SALAS
     // ==========================================
     async function carregarDadosSala() {
@@ -489,10 +570,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Exportação em Excel (Conclusão de Auditoria)
-    window.finalizarAuditoria = function () {
+    window.finalizarAuditoria = async function () {
         if (!window.salasAuditadasNaSessao || Object.keys(window.salasAuditadasNaSessao).length === 0) {
             alert("Nenhuma sala foi auditada ainda.");
             return;
+        }
+
+        const btnExport = document.getElementById('btnExportFinal');
+        if(btnExport) {
+            btnExport.disabled = true;
+            btnExport.querySelector('span').textContent = 'GERANDO...';
         }
 
         const agora = new Date();
@@ -506,22 +593,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (todosItensSessao.length === 0) return;
 
-        // Gerar Excel
-        const dadosExcel = todosItensSessao.map(item => ({
-            "Sala": item.nome_sala,
-            "Equipamento": item.nome_descricao,
-            "QR Code": item.numero_qrcode,
-            "Prof. Responsável": item.nome_professor || "Não atribuído",
-            "Data": dataStr,
-            "Hora": horaStr,
-            "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Presente" : "Faltando"
-        }));
+        // Gerar Excel usando o template do usuário (PATRIMONIO_FORMATADO.xlsx)
+        try {
+            // Busca o arquivo template no servidor localmente para o frontend usar
+            const response = await fetch('PATRIMONIO_FORMATADO.xlsx');
+            if (!response.ok) throw new Error("Template não encontrado.");
+            const arrayBuffer = await response.arrayBuffer();
+            
+            // Lê o template
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
 
-        const workbook = XLSX.utils.book_new();
-        const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
-        worksheet['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 15 }];
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Auditoria");
-        XLSX.writeFile(workbook, `Auditoria_Patrimonio_${dataStr.replace(/\//g, '-')}.xlsx`);
+            // Montar array of arrays (AOA) para anexar a partir da linha 5
+            const dadosEmFormatoDeArray = todosItensSessao.map(item => {
+                const status = (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando";
+                return [
+                    "20770001", // Default template col
+                    "2077",     // Default
+                    "00",       // Default
+                    "01",       // Default
+                    "", "", "", // Espaços Vazios (Merged cols)
+                    item.numero_qrcode, // N INVENTÁRIO (Índice H - 7)
+                    "",
+                    dataStr, // DATA INCORP (Índice J - 9)
+                    item.nome_descricao, // DENOMINAÇÃO (Índice K - 10)
+                    item.nome_professor || "Sem Prof.", // RESPONSAVEL (Índice L - 11)
+                    status, // OCORRÊNCIA/STATUS (Índice M - 12)
+                    item.nome_sala, // EXTRA (Sala Destino)
+                    "" // Disp
+                ];
+            });
+
+            // Adicionar os dados no sheet a partir da célula A5 (linha index 4)
+            XLSX.utils.sheet_add_aoa(worksheet, dadosEmFormatoDeArray, { origin: "A5" });
+
+            // Salvar
+            XLSX.writeFile(workbook, `Auditoria_Patrimonio_${dataStr.replace(/\//g, '-')}.xlsx`);
+            
+        } catch (err) {
+            console.error("Erro ao usar template Excel, fazendo fallback para tabela simples:", err);
+            // Fallback original
+            const dadosExcel = todosItensSessao.map(item => ({
+                "Sala": item.nome_sala,
+                "Equipamento": item.nome_descricao,
+                "QR Code": item.numero_qrcode,
+                "Prof. Responsável": item.nome_professor || "Não atribuído",
+                "Data": dataStr,
+                "Hora": horaStr,
+                "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Presente" : "Faltando"
+            }));
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
+            worksheet['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Auditoria");
+            XLSX.writeFile(workbook, `Auditoria_Patrimonio_${dataStr.replace(/\//g, '-')}.xlsx`);
+        } finally {
+            if(btnExport) {
+                btnExport.disabled = false;
+                btnExport.querySelector('span').textContent = 'CONCLUIR E EXPORTAR EXCEL';
+            }
+        }
     };
 
     // ==========================================

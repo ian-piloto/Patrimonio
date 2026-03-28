@@ -68,8 +68,17 @@ try {
             if (!$sala_id || !$professor_id)
                 throw new Exception("Sala e Professor são obrigatórios.");
 
+            $pdo->beginTransaction();
+
+            // Garante que o professor seja responsável por apenas uma sala
+            $stmtDesvincular = $pdo->prepare("UPDATE salas SET professor_id = NULL WHERE professor_id = ?");
+            $stmtDesvincular->execute([$professor_id]);
+
             $stmt = $pdo->prepare("UPDATE salas SET professor_id = ? WHERE id = ?");
             $stmt->execute([$professor_id, $sala_id]);
+
+            $pdo->commit();
+            
             echo json_encode(["status" => "success", "message" => "Vínculo atualizado com sucesso."]);
             break;
 
@@ -130,6 +139,59 @@ try {
             $stmt = $pdo->prepare("INSERT INTO patrimonios (numero_qrcode, nome_descricao, categoria_id, sala_atual_id) VALUES (?, ?, ?, ?)");
             $stmt->execute([$qrcode, $nome, $categoria_id, $sala_id]);
             echo json_encode(["status" => "success", "message" => "Patrimônio cadastrado com sucesso!"]);
+            break;
+
+        case 'importar_lote':
+            $dados = json_decode($_POST['patrimonios'] ?? '[]', true);
+            $categoria_id = $_POST['categoria_id'] ?? null;
+            $sala_id = $_POST['sala_id'] ?? null;
+
+            if (empty($dados) || !$categoria_id || !$sala_id) {
+                throw new Exception("A lista de itens, categoria padrão e sala destino são obrigatórios.");
+            }
+
+            $sucessoCount = 0;
+            $erroCount = 0;
+            $mensagensErro = [];
+
+            foreach ($dados as $index => $item) {
+                $qrcode = trim($item['qrcode'] ?? '');
+                $nome = trim($item['nome'] ?? '');
+
+                if (empty($qrcode) || empty($nome)) {
+                    $erroCount++;
+                    $mensagensErro[] = "Linha " . ($index + 1) . ": Dados incompletos (QR Code e Nome são obrigatórios).";
+                    continue;
+                }
+
+                // Verificar duplicata
+                $stmt_check = $pdo->prepare("SELECT id FROM patrimonios WHERE numero_qrcode = ?");
+                $stmt_check->execute([$qrcode]);
+                
+                if ($stmt_check->fetch()) {
+                    $erroCount++;
+                    $mensagensErro[] = "Linha " . ($index + 1) . ": Código '$qrcode' já cadastrado.";
+                    continue;
+                }
+
+                // Inserir
+                try {
+                    $stmt_insert = $pdo->prepare("INSERT INTO patrimonios (numero_qrcode, nome_descricao, categoria_id, sala_atual_id) VALUES (?, ?, ?, ?)");
+                    $stmt_insert->execute([$qrcode, $nome, $categoria_id, $sala_id]);
+                    $sucessoCount++;
+                } catch (\Exception $e) {
+                    $erroCount++;
+                    $mensagensErro[] = "Linha " . ($index + 1) . ": Erro no banco - " . $e->getMessage();
+                }
+            }
+
+            echo json_encode([
+                "status" => "success", // a requisição em si foi um sucesso, os erros internos vão aqui
+                "mensagem" => "Processamento concluído.",
+                "sucesso" => $sucessoCount,
+                "erros_count" => $erroCount,
+                "detalhes_erro" => $mensagensErro
+            ]);
             break;
 
         // 4. OCORRÊNCIAS (ITENS FORA DO LUGAR)

@@ -108,12 +108,12 @@
     INSERT INTO salas (id, nome_sala, professor_id) VALUES 
     (1, 'Laboratório de Informática 1', 1),
     (2, 'Laboratório de Informática 2', 2),
-    (3, 'Sala de Impressão 3D', 1),
+    (3, 'Sala de Impressão 3D', 3),
     (4, 'Sala Teórica 10', NULL),
     (5, 'Almoxarifado Central', NULL),
     (6, 'Laboratório de Redes', 4),
     (7, 'Sala dos Professores', NULL)
-    ON DUPLICATE KEY UPDATE id=id;
+    ON DUPLICATE KEY UPDATE id=id, professor_id=VALUES(professor_id);
 
     INSERT INTO categorias_patrimonio (id, nome) VALUES 
     (1, 'Computadores'),
