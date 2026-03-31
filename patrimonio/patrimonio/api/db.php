@@ -1,7 +1,7 @@
 <?php
 // Configurações do Banco de Dados
 $host = '127.0.0.1';
-$port = '3308';
+$port = '3306';
 $db = 'patrimonio_senai';
 $user = 'root'; // Mude se o seu MySQL tiver outro usuário
 $pass = ''; // Caso o MySQL no XAMPP tenha senha (ex: root), coloque aqui

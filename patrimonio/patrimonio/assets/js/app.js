@@ -383,96 +383,255 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==========================================
     // FUNCIONALIDADE: SALAS
+      // ==========================================
+    // FUNCIONALIDADE: SALAS (GESTÃO ADMINISTRATIVA E CONSULTA)
     // ==========================================
     async function carregarDadosSala() {
-        const select = $('#selectSalaVincular');
-        select.innerHTML = '<option>Carregando...</option>';
+        const selectProf = document.getElementById('selectProfVincular');
+        const selectSalaAdmin = document.getElementById('selectSalaAdminVincular');
+        const selectSalaDesvinc = document.getElementById('selectSalaAdminDesvincular');
+        
+        try {
+            // 1. Carrega as salas para os selects e visualização geral
+            const todasSalas = await api.getSalas();
+            window.listaSalasCache = todasSalas;
+            
+            // Renderiza lista geral para todos
+            renderizarListaSalasGeral(todasSalas);
+
+            // Popula selects administrativos
+            populateSelect('selectSalaAdminVincular', todasSalas, 'id', 'nome_sala', 'Selecionar Sala');
+            
+            // Popula select de desvinculação (apenas salas que tem professor)
+            const salasOcupadas = todasSalas.filter(s => s.professor_id != null);
+            populateSelect('selectSalaAdminDesvincular', salasOcupadas, 'id', 'nome_sala', 'Selecionar Sala Ocupada');
+
+            // 2. Carrega professores para o select administrativo
+            const professores = await api.getProfessores();
+            populateSelect('selectProfVincular', professores, 'id', 'nome', 'Selecionar Professor');
+
+            // 3. Se for professor, carrega os seus vínculos específicos
+            await carregarMinhasSalas();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // Listener para o novo formulário de desvinculação administrative
+    const formDesvincAdmin = document.getElementById('desvincularAdminForm');
+    if (formDesvincAdmin) formDesvincAdmin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const salaId = document.getElementById('selectSalaAdminDesvincular').value;
+        const btn = e.target.querySelector('button');
+
+        if (!confirm('Deseja realmente remover o professor responsável desta sala?')) return;
+
+        btn.disabled = true; btn.textContent = "Removendo...";
+        try {
+            const res = await api.desvincularSala(salaId);
+            if (res.status === 'success') {
+                showMessage('msgDesvincAdmin', 'Responsabilidade removida com sucesso!', 'success');
+                await carregarDadosSala();
+            } else {
+                showMessage('msgDesvincAdmin', res.message, 'error');
+            }
+        } catch (e) {
+            showMessage('msgDesvincAdmin', 'Erro de conexão.', 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = "Remover Professor";
+        }
+    });
+
+    function renderizarListaSalasGeral(salas) {
+        const container = document.getElementById('listaSalasGeral');
+        if (!container) return;
+
+        if (salas.length === 0) {
+            container.innerHTML = '<p class="text-muted">Nenhuma sala cadastrada.</p>';
+            return;
+        }
+
+        const isAdmin = window.usuarioTipo === 'admin';
+
+        container.innerHTML = salas.map(sala => `
+            <div class="list-item" style="cursor: pointer;" onclick="selecionarSalaParaVisualizar(${sala.id}, '${sala.nome_sala}')">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div>
+                        <strong>${sala.nome_sala}</strong>
+                        <div class="badge ${sala.nome_professor ? 'badge-success-soft' : 'badge-warning-soft'}" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; display: inline-block; margin-left: 10px;">
+                            ${sala.nome_professor ? '<i class="bi bi-person-check"></i> ' + sala.nome_professor : '<i class="bi bi-person-x"></i> Sem Responsável'}
+                        </div>
+                    </div>
+                    
+                    ${isAdmin && sala.nome_professor ? `
+                        <button class="btn-desvincular-mini" onclick="event.stopPropagation(); desvincularAdminSala(${sala.id}, '${sala.nome_sala}', '${sala.nome_professor}')" title="Remover Responsável">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Função de desvincular administrativa
+    window.desvincularAdminSala = async function(salaId, nomeSala, nomeProf) {
+        if (!confirm(`Deseja realmente remover a responsabilidade de "${nomeProf}" sobre a sala "${nomeSala}"?`)) return;
 
         try {
-            const salas = await api.getSalas();
-            // Salva global para outras abas
-            window.listaSalasCache = salas;
-            populateSelect('selectSalaVincular', salas, 'id', 'nome_sala', 'Selecionar sua Sala');
+            const res = await api.desvincularSala(salaId);
+            if (res.status === 'success') {
+                // Limpa o localstorage se for a sala que estava aberta
+                if (localStorage.getItem('usuario_sala_id') == salaId) {
+                    localStorage.removeItem('usuario_sala_id');
+                    localStorage.removeItem('usuario_sala_nome');
+                }
+                await carregarDadosSala();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
-            // Tenta pegar a sala atual se o usuario ja escolheu antes na sessao local (simulação persistência frontend)
-            const salaSalva = localStorage.getItem('usuario_sala_id');
-            if (salaSalva) {
-                select.value = salaSalva;
-                carregarPatrimoniosSalaAtual(salaSalva);
+    async function carregarMinhasSalas() {
+        const listaDiv = document.getElementById('listaMinhasSalas');
+        const containerMinhas = document.getElementById('containerMinhasSalas');
+        const placeholderVazio = document.getElementById('placeholderSalasVazio');
+
+        try {
+            const minhasSalas = await api.getMinhasSalas();
+            
+            // Apenas mostra o container de "Suas Salas" se houver vínculos
+            if (minhasSalas.length > 0) {
+                containerMinhas.classList.remove('hidden');
+                placeholderVazio.classList.add('hidden');
+                
+                listaDiv.innerHTML = minhasSalas.map(sala => `
+                    <div class="sala-card-premium" id="sala-card-${sala.id}" onclick="selecionarSalaParaVisualizar(${sala.id}, '${sala.nome_sala}')">
+                        <div class="sala-card-info">
+                            <i class="bi bi-door-open-fill" style="color: var(--senai-red);"></i>
+                            <strong>${sala.nome_sala}</strong>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Se houver uma sala salva, seleciona
+                const salaAtiva = localStorage.getItem('usuario_sala_id');
+                if (salaAtiva && minhasSalas.some(s => s.id == salaAtiva)) {
+                    selecionarSalaParaVisualizar(salaAtiva, localStorage.getItem('usuario_sala_nome'));
+                }
+            } else {
+                containerMinhas.classList.add('hidden');
+                placeholderVazio.classList.remove('hidden');
             }
         } catch (e) {
             console.error(e);
         }
     }
 
-    $('#criarSalaForm').addEventListener('submit', async (e) => {
+    window.selecionarSalaParaVisualizar = async function(salaId, nomeSala) {
+        // Estilização do card ativo se existir na lista do professor
+        document.querySelectorAll('.sala-card-premium').forEach(c => c.classList.remove('active'));
+        const cardAtivo = document.getElementById(`sala-card-${salaId}`);
+        if (cardAtivo) cardAtivo.classList.add('active');
+
+        // Atualiza UI de detalhes
+        document.getElementById('containerDetalhesSala').classList.remove('hidden');
+        document.getElementById('placeholderSalasVazio').classList.add('hidden');
+        document.getElementById('tituloSalaSelecionada').innerHTML = `<i class="bi bi-box-seam"></i> Patrimônios de ${nomeSala}`;
+
+        // Salva estado
+        localStorage.setItem('usuario_sala_id', salaId);
+        localStorage.setItem('usuario_sala_nome', nomeSala);
+
+        // Carrega patrimônios
+        await carregarPatrimoniosSalaAtual(salaId);
+    };
+
+    // --- Listeners Administrativos ---
+    
+    // Cadastro de Professor
+    const formCadProf = document.getElementById('cadastrarProfessorForm');
+    if (formCadProf) formCadProf.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const nomeSala = $('#inputNovaSala').value.trim();
+        const nome = document.getElementById('profNome').value.trim();
+        const email = document.getElementById('profEmail').value.trim();
+        const senha = document.getElementById('profSenha').value;
         const btn = e.target.querySelector('button');
 
-        if (!nomeSala) return;
+        btn.disabled = true; btn.textContent = "Cadastrando...";
+        try {
+            const res = await api.cadastrarProfessor(nome, email, senha);
+            if (res.status === 'success') {
+                showMessage('msgCadProf', res.message, 'success');
+                e.target.reset();
+                await carregarDadosSala();
+            } else {
+                showMessage('msgCadProf', res.message, 'error');
+            }
+        } catch (e) {
+            showMessage('msgCadProf', 'Erro de conexão.', 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = "Cadastrar Professor";
+        }
+    });
 
-        btn.disabled = true; btn.textContent = "Criando...";
+    // Vínculo Administrativo
+    const formVincAdmin = document.getElementById('vincularAdminForm');
+    if (formVincAdmin) formVincAdmin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const profId = document.getElementById('selectProfVincular').value;
+        const salaId = document.getElementById('selectSalaAdminVincular').value;
+        const btn = e.target.querySelector('button');
+
+        btn.disabled = true; btn.textContent = "Vinculando...";
+        try {
+            const res = await api.vincularSala(salaId, profId);
+            if (res.status === 'success') {
+                showMessage('msgVincAdmin', 'Responsabilidade atribuída!', 'success');
+                await carregarDadosSala();
+            } else {
+                showMessage('msgVincAdmin', res.message, 'error');
+            }
+        } catch (e) {
+            showMessage('msgVincAdmin', 'Erro de conexão.', 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = "Realizar Vínculo";
+        }
+    });
+
+    // Cadastro de Sala
+    const formCriarSala = document.getElementById('criarSalaForm');
+    if (formCriarSala) formCriarSala.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const nomeSala = document.getElementById('inputNovaSala').value.trim();
+        const btn = e.target.querySelector('button');
+
+        btn.disabled = true; btn.textContent = "...";
         try {
             const res = await api.cadastrarSala(nomeSala);
             if (res.status === 'success') {
-                showMessage('criarSalaMessage', res.message, 'success');
-                $('#inputNovaSala').value = '';
-
-                // Força recarregamento da lista de salas globalmente
-                const salas = await api.getSalas();
-                window.listaSalasCache = salas;
-
-                // Recarrega o select da tela de vínculo
-                populateSelect('selectSalaVincular', salas, 'id', 'nome_sala', 'Selecionar sua Sala');
-                // Se o usuário tentar auditar ou abrir ocorrência logo em seguida, o select também tem que refletir a nova sala!
-                if (document.getElementById('selectSalaScanner')) populateSelect('selectSalaScanner', salas, 'id', 'nome_sala', 'Selecione a sala em que você está');
-                if (document.getElementById('selectSalaOcorrencia')) populateSelect('selectSalaOcorrencia', salas, 'id', 'nome_sala');
-
+                showMessage('criarSalaMessage', 'Setor criado!', 'success');
+                document.getElementById('inputNovaSala').value = '';
+                await carregarDadosSala();
             } else {
                 showMessage('criarSalaMessage', res.message, 'error');
             }
         } catch (e) {
-            showMessage('criarSalaMessage', 'Erro de conexão.', 'error');
+            showMessage('criarSalaMessage', 'Erro.', 'error');
         } finally {
-            btn.disabled = false; btn.textContent = "Criar Sala";
-        }
-    });
-
-    $('#vincularSalaForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const salaSelect = $('#selectSalaVincular');
-        const salaId = salaSelect.value;
-        const btn = e.target.querySelector('button');
-
-        if (!salaId) return;
-
-        btn.disabled = true; btn.textContent = "Salvando...";
-        try {
-            // Professor_id simulado como 1 no app se não tiver var de sessão no JS
-            const res = await api.vincularSala(salaId, 1);
-            if (res.status === 'success') {
-                showMessage('vincularMessage', 'Vínculo salvo com sucesso!', 'success');
-                localStorage.setItem('usuario_sala_id', salaId);
-                localStorage.setItem('usuario_sala_nome', salaSelect.options[salaSelect.selectedIndex].text);
-                carregarPatrimoniosSalaAtual(salaId);
-            } else {
-                showMessage('vincularMessage', res.message, 'error');
-            }
-        } catch (e) {
-            showMessage('vincularMessage', 'Erro de conexão.', 'error');
-        } finally {
-            btn.disabled = false; btn.textContent = "Salvar Vínculo";
+            btn.disabled = false; btn.textContent = "Criar";
         }
     });
 
     async function carregarPatrimoniosSalaAtual(salaId) {
         const container = $('#listaPatrimoniosSala');
-        container.innerHTML = '<div class="spinner text-center"></div>';
+        container.innerHTML = '<div class="spinner-container-mini"><div class="spinner-mini"></div></div>';
         try {
             const itens = await api.getPatrimoniosSala(salaId);
             if (itens.length === 0) {
-                container.innerHTML = '<p class="text-muted">Nenhum patrimônio cadastrado nesta sala.</p>';
+                container.innerHTML = '<p class="text-muted text-center" style="padding: 20px;">Nenhum patrimônio cadastrado nesta sala.</p>';
                 return;
             }
 
@@ -480,7 +639,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="list-item">
                     <span class="list-item-badge">${item.numero_qrcode}</span>
                     <strong class="mt-2">${item.nome_descricao}</strong>
-                    <span class="text-muted">Cat: ${item.categoria}</span>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span class="text-muted" style="font-size: 0.8rem;">Cat: ${item.categoria}</span>
+                        <span class="text-main" style="font-size: 0.8rem; font-weight: 600;">
+                            <i class="bi bi-person-badge" style="color: var(--primary);"></i> Responsável: ${item.nome_professor || '<span style="font-weight: 400; color: #999;">Não atribuído</span>'}
+                        </span>
+                    </div>
                 </div>
             `).join('');
         } catch (e) {
@@ -520,6 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="item-info">
                             <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);"><i class="bi bi-qr-code"></i> ${item.numero_qrcode}</span>
                             <strong style="font-size: 0.95rem; color: var(--text-main); margin-top: 2px;">${item.nome_descricao}</strong>
+                            <div style="font-size: 0.75rem; color: var(--primary); font-weight: 600; margin-top: 2px;">
+                                <i class="bi bi-person-badge"></i> Responsável: ${item.nome_professor || "Sem Professor"}
+                            </div>
                         </div>
                         <div style="display: flex; align-items: center;">
                             <button type="button" class="btn-ocorrencia-mini" title="Informar Problema" onclick="event.stopPropagation(); abrirOcorrenciaManual(${item.id}, '${item.numero_qrcode}')">

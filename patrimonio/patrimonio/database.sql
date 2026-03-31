@@ -89,13 +89,13 @@
 
     -- INSERÇÕES DE TESTE INICIAIS (SEED)
 
-    -- Senha padrão para testes: 'senai123' (hash gerado pelo password_hash do PHP)
+    -- Senha padrão para testes: 'senai123'
     INSERT INTO usuarios (nome, email, senha, tipo) VALUES 
-    ('Administrador SENAI', 'admin@senai.br', '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUENlU7iwE4m', 'admin'),
-    ('Professor João', 'joao@senai.br', '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUENlU7iwE4m', 'professor'),
-    ('Professora Maria', 'maria@senai.br', '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUENlU7iwE4m', 'professor'),
-    ('Professora Ana Clara', 'ana@senai.br', '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUENlU7iwE4m', 'professor'),
-    ('Professor Carlos', 'carlos@senai.br', '$2y$10$0aivcj2VKkwTVO.WzNGEwyDy1AxMAqgeZ6wPrhEUENlU7iwE4m', 'professor')
+    ('Administrador SENAI', 'admin@senai.br', 'senai123', 'admin'),
+    ('Professor João', 'joao@senai.br', 'senai123', 'professor'),
+    ('Professora Maria', 'maria@senai.br', 'senai123', 'professor'),
+    ('Professora Ana Clara', 'ana@senai.br', 'senai123', 'professor'),
+    ('Professor Carlos', 'carlos@senai.br', 'senai123', 'professor')
     ON DUPLICATE KEY UPDATE id=id;
 
     INSERT INTO professores (nome, usuario_id) VALUES 
@@ -132,13 +132,25 @@
     ('P002', 'Computador Dell Optiplex Core i7', 1, 1),
     ('P003', 'Notebook Dell Latitude', 7, 4),
     ('P004', 'Notebook Dell Latitude', 7, 4),
+    ('P005', 'Notebook MacBook Air M2', 7, 2),
+    ('P006', 'Computador HP ProDesk i5', 1, 6),
+    ('P007', 'Computador Lenovo ThinkCentre', 1, 6),
     ('M001', 'Monitor Dell 24"', 2, 1),
     ('M002', 'Monitor Samsung 27"', 2, 2),
+    ('M003', 'Monitor LG UltraWide 29"', 2, 6),
+    ('M004', 'Monitor AOC 21.5"', 2, 1),
     ('C001', 'Cadeira Giratória Preta', 3, 2),
     ('C002', 'Cadeira Fixa Azul', 3, 3),
+    ('C003', 'Cadeira Executiva Couro', 3, 7),
+    ('C004', 'Cadeira Gamer Alpha', 3, 3),
     ('PRJ01', 'Projetor Epson PowerLite', 5, 2),
+    ('PRJ02', 'Projetor BenQ MH560', 5, 4),
     ('AC01', 'Ar Condicionado LG 12000 BTUs', 6, 1),
-    ('K001', 'Teclado Mecânico Logitech', 8, 5)
+    ('AC02', 'Ar Condicionado Carrier 18000 BTUs', 6, 6),
+    ('K001', 'Teclado Mecânico Logitech', 8, 5),
+    ('K002', 'Mouse Wireless Microsoft', 8, 5),
+    ('MS01', 'Mesa de Escritório 1.20m', 4, 7),
+    ('MS02', 'Mesa de Reunião 2.00m', 4, 3)
     ON DUPLICATE KEY UPDATE id=id;
 
     -- Inserindo Ocorrências de Exemplo

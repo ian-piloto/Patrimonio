@@ -16,14 +16,51 @@ try {
 
         // 1. DADOS DE CADASTROS (SELECTS)
         case 'get_salas':
-            // Pega as salas e o nome do professor responsável, se houver
-            $stmt = $pdo->query("
-                SELECT s.id, s.nome_sala, p.nome as nome_professor 
-                FROM salas s 
-                LEFT JOIN professores p ON s.professor_id = p.id
-                ORDER BY s.nome_sala
-            ");
+            // Pela as salas e o nome do professor responsável, se houver
+            $meuVinculo = ($_GET['meu_vinculo'] ?? 'false') === 'true';
+            $sql = "SELECT s.id, s.nome_sala, p.nome as nome_professor, s.professor_id 
+                    FROM salas s 
+                    LEFT JOIN professores p ON s.professor_id = p.id";
+            
+            $params = [];
+            if ($meuVinculo) {
+                $userId = $_SESSION['usuario_id'] ?? null;
+                if (!$userId) {
+                    echo json_encode(["status" => "success", "data" => []]);
+                    break;
+                }
+                $sql .= " WHERE p.usuario_id = ?";
+                $params[] = $userId;
+            }
+            
+            $sql .= " ORDER BY s.nome_sala";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
             echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
+            break;
+
+        case 'cadastrar_professor':
+            $nome = trim($_POST['nome'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $senha = trim($_POST['senha'] ?? '');
+
+            if (empty($nome) || empty($email) || empty($senha)) {
+                throw new Exception("Nome, E-mail e Senha são obrigatórios para o cadastro.");
+            }
+
+            $pdo->beginTransaction();
+
+            // 1. Criar Usuário (tipo professor)
+            $stmtUser = $pdo->prepare("INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, 'professor')");
+            $stmtUser->execute([$nome, $email, $senha]);
+            $usuario_id = $pdo->lastInsertId();
+
+            // 2. Criar registro na tabela de professores
+            $stmtProf = $pdo->prepare("INSERT INTO professores (nome, usuario_id) VALUES (?, ?)");
+            $stmtProf->execute([$nome, $usuario_id]);
+
+            $pdo->commit();
+            echo json_encode(["status" => "success", "message" => "Professor '{$nome}' cadastrado com sucesso!"]);
             break;
 
         case 'get_professores':
@@ -60,26 +97,38 @@ try {
             ]);
             break;
 
-        // 2. VÍNCULO DE PROFESSOR E SALA
+        // 2. VÍNCULO DE PROFESSOR E SALA (RESTRITO ADMIN NO FRONT)
         case 'vincular_sala':
             $sala_id = $_POST['sala_id'] ?? null;
             $professor_id = $_POST['professor_id'] ?? null;
 
-            if (!$sala_id || !$professor_id)
-                throw new Exception("Sala e Professor são obrigatórios.");
+            if (!$sala_id || !$professor_id) {
+                throw new Exception("Sala e Professor são obrigatórios para o vínculo.");
+            }
 
-            $pdo->beginTransaction();
+            // Verifica se a sala já tem alguém vinculado
+            $stmtCheck = $pdo->prepare("SELECT professor_id FROM salas WHERE id = ?");
+            $stmtCheck->execute([$sala_id]);
+            $sala = $stmtCheck->fetch();
 
-            // Garante que o professor seja responsável por apenas uma sala
-            $stmtDesvincular = $pdo->prepare("UPDATE salas SET professor_id = NULL WHERE professor_id = ?");
-            $stmtDesvincular->execute([$professor_id]);
+            if ($sala && $sala['professor_id']) {
+                throw new Exception("Esta sala já possui um professor responsável. Desvincule-o primeiro para realizar um novo vínculo.");
+            }
 
+            // Atribui o professor à sala (múltiplos vínculos permitidos por professor)
             $stmt = $pdo->prepare("UPDATE salas SET professor_id = ? WHERE id = ?");
             $stmt->execute([$professor_id, $sala_id]);
-
-            $pdo->commit();
             
-            echo json_encode(["status" => "success", "message" => "Vínculo atualizado com sucesso."]);
+            echo json_encode(["status" => "success", "message" => "Vínculo administrativo realizado com sucesso."]);
+            break;
+
+        case 'desvincular_sala':
+            $sala_id = $_POST['sala_id'] ?? null;
+            if (!$sala_id) throw new Exception("ID da sala obrigatório.");
+
+            $stmt = $pdo->prepare("UPDATE salas SET professor_id = NULL WHERE id = ?");
+            $stmt->execute([$sala_id]);
+            echo json_encode(["status" => "success", "message" => "Vínculo removido com sucesso."]);
             break;
 
         // 3. LEITURA E GESTÃO DE PATRIMÔNIO (QR CODE)

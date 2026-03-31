@@ -414,6 +414,110 @@ button {
     line-height: 1.4;
 }
 
+/* ==================================
+   GESTÃO DE MÚLTIPLAS SALAS (PREMIUM)
+   ================================== */
+.salas-grid-premium {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.sala-card-premium {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+}
+
+.sala-card-premium i {
+    font-size: 1.8rem;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    transition: var(--transition);
+}
+
+.sala-card-premium strong {
+    font-size: 0.82rem;
+    color: var(--text-main);
+    display: block;
+    line-height: 1.2;
+}
+
+.sala-card-premium:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    border-color: var(--senai-red);
+}
+
+.sala-card-premium.active {
+    background: linear-gradient(135deg, rgba(26, 115, 232, 0.05) 0%, rgba(225, 25, 49, 0.05) 100%);
+    border: 2px solid var(--senai-red);
+    box-shadow: 0 8px 25px rgba(225, 25, 49, 0.1);
+}
+
+.sala-card-premium.active i {
+    color: var(--senai-red);
+}
+
+.btn-desvincular-mini {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: none;
+    color: #e53e3e;
+    font-size: 1.1rem;
+    opacity: 0;
+    transition: var(--transition);
+    padding: 2px;
+}
+
+.sala-card-premium:hover .btn-desvincular-mini {
+    opacity: 0.7;
+}
+
+.btn-desvincular-mini:hover {
+    opacity: 1 !important;
+    transform: scale(1.1);
+}
+
+/* Spinners e Loaders */
+.spinner-container-mini {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.spinner-mini {
+    width: 25px;
+    height: 25px;
+    border: 3px solid rgba(225, 25, 49, 0.1);
+    border-top: 3px solid var(--senai-red);
+    border-radius: 50%;
+    animation: spin-mini 0.8s linear infinite;
+}
+
+@keyframes spin-mini {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.section-header-mini h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
 .notificacao-time {
     display: block;
     font-size: 0.75rem;
@@ -463,9 +567,36 @@ button {
     color: var(--senai-red);
 }
 
-/* ==================================
-   BOTTOM NAVIGATION (MOBILE)
-   ================================== */
+.btn-desvincular-mini {
+    background: #fee2e2;
+    color: #ef4444;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-desvincular-mini:hover {
+    background: #fecaca;
+    transform: scale(1.1);
+}
+
+.badge-success-soft {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-warning-soft {
+    background: #fef9c3;
+    color: #854d0e;
+}
+
+/* Navegação Inferior (Mobile Tabs) */
 .bottom-nav {
     position: fixed;
     bottom: 0;

@@ -9,8 +9,28 @@ const api = {
         return (await res.json()).data || [];
     },
 
+    getProfessores: async () => {
+        const res = await fetch(`${API_ROUTES}?action=get_professores`);
+        return (await res.json()).data || [];
+    },
+
+    cadastrarProfessor: async (nome, email, senha) => {
+        const formData = new FormData();
+        formData.append('action', 'cadastrar_professor');
+        formData.append('nome', nome);
+        formData.append('email', email);
+        formData.append('senha', senha);
+        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
+        return await res.json();
+    },
+
     getCategorias: async () => {
         const res = await fetch(`${API_ROUTES}?action=get_categorias`);
+        return (await res.json()).data || [];
+    },
+
+    getMinhasSalas: async () => {
+        const res = await fetch(`${API_ROUTES}?action=get_salas&meu_vinculo=true`);
         return (await res.json()).data || [];
     },
 
@@ -24,14 +44,20 @@ const api = {
     },
 
     // Vincular Sala
-    vincularSala: async (sala_id, professor_id = 1) => {
-        // Em app real o professor_id vem da sessão PHP. Mandamos apenas sala_id
+    vincularSala: async (sala_id, professor_id = null) => {
         const formData = new FormData();
         formData.append('action', 'vincular_sala');
         formData.append('sala_id', sala_id);
-        // Enviando 1 temporariamente como fallback se a sessão PHP não pegar
-        formData.append('professor_id', professor_id);
+        if (professor_id) formData.append('professor_id', professor_id);
 
+        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
+        return await res.json();
+    },
+
+    desvincularSala: async (sala_id) => {
+        const formData = new FormData();
+        formData.append('action', 'desvincular_sala');
+        formData.append('sala_id', sala_id);
         const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
         return await res.json();
     },

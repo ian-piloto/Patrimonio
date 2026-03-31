@@ -24,15 +24,15 @@ if ($action === 'login') {
         $stmt->execute([$email]);
         $usuario = $stmt->fetch();
 
-        if ($usuario && password_verify($senha, $usuario['senha'])) {
+        if ($usuario && $senha === $usuario['senha']) {
             // Sucesso no login
             $_SESSION['usuario_id'] = $usuario['id'];
             $_SESSION['usuario_nome'] = $usuario['nome'];
             $_SESSION['usuario_tipo'] = $usuario['tipo'];
-
+            
             echo json_encode([
                 "status" => "success",
-                "message" => "Login realizado com sucesso",
+                "message" => "Login realizado com sucesso (Modo Sem Criptografia)",
                 "tipo" => $usuario['tipo']
             ]);
         }

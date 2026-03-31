@@ -148,39 +148,118 @@
         <!-- ======================= -->
         <section id="tab-salas" class="app-section fade-in hidden">
             <div class="section-header">
-                <h2><i class="bi bi-door-open"></i> Minha Sala</h2>
-                <p>Vincule-se a uma sala e veja os patrimônios</p>
+                <h2><i class="bi bi-door-open"></i> Gestão de Setores</h2>
+                <p>Administração de professores e responsabilidades</p>
             </div>
 
-            <div class="glass-box mb-4" id="boxCriarSala">
-                <form id="criarSalaForm" class="standard-form">
-                    <div class="form-group">
-                        <label>Cadastrar Nova Sala:</label>
-                        <input type="text" id="inputNovaSala" class="form-control" required
-                            placeholder="Ex: Laboratório de Informática 3">
+            <!-- Administração de Professores e Vínculos (Restrito Admin) -->
+            <div class="restricted-access mb-4" id="adminSalasPanel">
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                    <!-- Cadastro de Professores -->
+                    <div class="glass-box" style="flex: 1; min-width: 280px;">
+                        <h3 class="mb-3" style="font-size: 1.1rem;"><i class="bi bi-person-plus"></i> Cadastrar Professor</h3>
+                        <form id="cadastrarProfessorForm" class="standard-form">
+                            <div class="form-group">
+                                <label>Nome do Professor:</label>
+                                <input type="text" id="profNome" class="form-control" placeholder="Ex: Professor João" required>
+                            </div>
+                            <div class="form-group mt-2">
+                                <label>E-mail:</label>
+                                <input type="email" id="profEmail" class="form-control" placeholder="joao@senai.br" required>
+                            </div>
+                            <div class="form-group mt-2">
+                                <label>Senha Inicial:</label>
+                                <input type="password" id="profSenha" class="form-control" value="senai123" required>
+                            </div>
+                            <button type="submit" class="btn-primary mt-3 w-100">Cadastrar Professor</button>
+                            <div id="msgCadProf" class="form-messages mt-2"></div>
+                        </form>
                     </div>
-                    <button type="submit" class="btn-primary mt-2">Criar Sala</button>
+
+                    <!-- Vínculo de Professor a Sala -->
+                    <div class="glass-box" style="flex: 1; min-width: 250px;">
+                        <h3 class="mb-3" style="font-size: 1.1rem; color: var(--senai-red);"><i class="bi bi-link-45deg"></i> Vincular Novo</h3>
+                        <form id="vincularAdminForm" class="standard-form">
+                            <div class="form-group">
+                                <label>Selecionar Professor:</label>
+                                <select id="selectProfVincular" class="form-control" required>
+                                    <option value="">Carregando professores...</option>
+                                </select>
+                            </div>
+                            <div class="form-group mt-2">
+                                <label>Selecionar Setor/Sala:</label>
+                                <select id="selectSalaAdminVincular" class="form-control" required>
+                                    <option value="">Carregando salas...</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn-warning mt-3 w-100">Realizar Vínculo</button>
+                            <div id="msgVincAdmin" class="form-messages mt-2"></div>
+                        </form>
+                    </div>
+
+                    <!-- REMOVER RESPONSABILIDADE (NOVO) -->
+                    <div class="glass-box" style="flex: 1; min-width: 250px;">
+                        <h3 class="mb-3" style="font-size: 1.1rem; color: var(--senai-red);"><i class="bi bi-person-dash"></i> Remover Vínculo</h3>
+                        <form id="desvincularAdminForm" class="standard-form">
+                            <div class="form-group">
+                                <label>Sala a Desocupar:</label>
+                                <select id="selectSalaAdminDesvincular" class="form-control" required>
+                                    <option value="">Carregando salas ocupadas...</option>
+                                </select>
+                            </div>
+                            <p class="text-muted mt-2" style="font-size: 0.8rem;">Isso removerá o professor responsável pelo setor sem excluir os dados.</p>
+                            <button type="submit" class="btn-primary mt-2 w-100" style="background: var(--text-main);">Remover Professor</button>
+                            <div id="msgDesvincAdmin" class="form-messages mt-2"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Criar Sala -->
+                <div class="glass-box mt-3" id="formCriarSalaAdmin">
+                    <h3 style="font-size: 1.1rem;"><i class="bi bi-plus-circle"></i> Novo Setor</h3>
+                    <form id="criarSalaForm" class="standard-form" style="display: flex; gap: 10px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Nome do Setor:</label>
+                            <input type="text" id="inputNovaSala" class="form-control" placeholder="Ex: Laboratório 3" required>
+                        </div>
+                        <button type="submit" class="btn-primary" style="height: 45px; width: 120px;">Criar</button>
+                    </form>
                     <div id="criarSalaMessage" class="form-messages mt-2"></div>
-                </form>
+                </div>
             </div>
 
-            <div class="glass-box mb-4">
-                <form id="vincularSalaForm" class="standard-form">
-                    <div class="form-group">
-                        <label>Vincular a uma Sala:</label>
-                        <select id="selectSalaVincular" class="form-control" required>
-                            <option value="">Carregando salas...</option>
-                        </select>
-                    </div>
-                    <!-- O professor logado será injetado via JS na request -->
-                    <button type="submit" class="btn-primary mt-2">Salvar Vínculo</button>
-                    <div id="vincularMessage" class="form-messages mt-2"></div>
-                </form>
+            <!-- VISUALIZAÇÃO GERAL (PARA TODOS) -->
+            <div id="containerMinhasSalas" class="mb-4 hidden fade-in">
+                <h3 style="margin-bottom: 15px;"><i class="bi bi-person-check-fill"></i> Suas Salas Responsáveis</h3>
+                <div id="listaMinhasSalas" class="salas-grid-premium">
+                    <!-- Cards das salas do professor logado -->
+                </div>
             </div>
 
-            <h3>Patrimônios da Sala Atual</h3>
-            <div id="listaPatrimoniosSala" class="itens-lista">
-                <p class="text-muted">Selecione uma sala primeiro.</p>
+            <div class="section-header-mini mb-3">
+                <h3 style="font-size: 1.1rem;"><i class="bi bi-list-stars"></i> Lista Geral de Setores</h3>
+                <p class="text-muted">Consulte quem é o responsável por cada área.</p>
+            </div>
+            
+            <div id="listaSalasGeral" class="itens-lista">
+                <!-- Lista de todas as salas injetada JS -->
+            </div>
+
+            <div id="containerDetalhesSala" class="hidden mt-4">
+                <div class="section-header-mini mb-3">
+                    <h3 id="tituloSalaSelecionada">Patrimônios da Sala</h3>
+                    <p id="subtituloSalaSelecionada" class="text-muted">Gerenciando itens deste setor</p>
+                </div>
+                <div id="listaPatrimoniosSala" class="itens-lista">
+                    <!-- Itens da sala selecionada -->
+                </div>
+            </div>
+
+            <div id="placeholderSalasVazio" class="hidden">
+                <p class="text-muted text-center glass-box" style="padding: 30px;">
+                    <i class="bi bi-info-circle" style="font-size: 2rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
+                    Nenhuma sala vinculada ou selecionada.
+                </p>
             </div>
         </section>
 

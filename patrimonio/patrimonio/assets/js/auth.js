@@ -90,15 +90,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Controle de Permissões Baseado em Perfil (RBAC)
 function aplicarPermissoes(tipoUsuario) {
-    if (tipoUsuario !== 'admin') {
-        // Se for um professor ou usuário não-admin, esconder botões de ação e tabs
-        // O professor pode acessar a aba de ocorrências, então "tabOcorrencias" continua visível.
-        const tabTransferir = document.querySelector('.nav-item[data-target="tab-emprestimos"]');
-        const tabCadastrar = document.querySelector('.nav-item[data-target="tab-cadastro"]');
-        const boxCriarSala = document.getElementById('boxCriarSala'); // Bloqueia criar sala
+    console.log("Aplicando permissões para:", tipoUsuario);
+    
+    if (tipoUsuario === 'admin') {
+        // Se for admin, remove a restrição de tudo que estiver marcado como restrito no HTML
+        document.querySelectorAll('.restricted-access').forEach(el => {
+            el.classList.remove('restricted-access');
+        });
+    } else {
+        // Se NÃO for admin (professor), garantimos que abas sensíveis fiquem ocultas
+        const tabsParaEsconder = [
+            'tab-emprestimos',
+            'tab-cadastro'
+        ];
+        
+        tabsParaEsconder.forEach(target => {
+            const btn = document.querySelector(`.nav-item[data-target="${target}"]`);
+            if (btn) btn.classList.add('hidden');
+        });
 
-        if (tabTransferir) tabTransferir.classList.add('restricted-access');
-        if (tabCadastrar) tabCadastrar.classList.add('restricted-access');
-        if (boxCriarSala) boxCriarSala.classList.add('restricted-access');
+        // O painel de admin na aba Salas (se houver) deve continuar com a classe restricted-access (que é display:none)
     }
 }
