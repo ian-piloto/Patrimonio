@@ -333,6 +333,13 @@ button {
     max-height: 85vh;
 }
 
+.patrimonios-modal {
+    max-width: 550px !important;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
 .notificacoes-header {
     display: flex;
     justify-content: space-between;

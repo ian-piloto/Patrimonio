@@ -167,28 +167,27 @@ try {
             echo json_encode(["status" => "success", "data" => $stmt->fetchAll()]);
             break;
 
-        // 3.5 CADASTRO DE PATRIMÔNIO
         case 'cadastrar_patrimonio':
-            $qrcode = $_POST['qrcode'] ?? '';
-            $nome = $_POST['nome'] ?? '';
+            $qrcode = trim($_POST['numero_qrcode'] ?? '');
+            $nome = trim($_POST['nome_descricao'] ?? '');
             $categoria_id = $_POST['categoria_id'] ?? null;
-            $sala_id = $_POST['sala_id'] ?? null;
+            $sala_id = $_POST['sala_atual_id'] ?? null;
 
             if (empty($qrcode) || empty($nome) || !$categoria_id || !$sala_id) {
-                throw new Exception("Todos os campos do formulário são obrigatórios.");
+                throw new Exception("Todos os campos (QR Code, Descrição, Categoria e Sala) são obrigatórios.");
             }
 
-            // Verifica duplicidade do QR Code
-            $stmt = $pdo->prepare("SELECT id FROM patrimonios WHERE numero_qrcode = ?");
-            $stmt->execute([$qrcode]);
-            if ($stmt->fetch()) {
-                echo json_encode(["status" => "error", "message" => "O código QR '{$qrcode}' já se encontra cadastrado."]);
-                exit;
+            // Verifica duplicidade de QR Code
+            $stmtCheck = $pdo->prepare("SELECT id FROM patrimonios WHERE numero_qrcode = ?");
+            $stmtCheck->execute([$qrcode]);
+            if ($stmtCheck->fetch()) {
+                throw new Exception("Já existe um patrimônio cadastrado com o QR Code '{$qrcode}'.");
             }
 
             $stmt = $pdo->prepare("INSERT INTO patrimonios (numero_qrcode, nome_descricao, categoria_id, sala_atual_id) VALUES (?, ?, ?, ?)");
             $stmt->execute([$qrcode, $nome, $categoria_id, $sala_id]);
-            echo json_encode(["status" => "success", "message" => "Patrimônio cadastrado com sucesso!"]);
+
+            echo json_encode(["status" => "success", "message" => "Patrimônio '{$nome}' cadastrado com sucesso!"]);
             break;
 
         case 'importar_lote':
@@ -379,23 +378,29 @@ try {
 
         // 5. EMPRÉSTIMOS DE ITENS ENTRE SALAS
         case 'registrar_emprestimo':
-            $patrimonio_id = $_POST['patrimonio_id'] ?? null;
+            $patrimonio_ids = $_POST['patrimonio_ids'] ?? []; // Agora aceita um array ou valor único
+            if (!is_array($patrimonio_ids)) $patrimonio_ids = [$patrimonio_ids];
+
             $sala_origem = $_POST['sala_origem_id'] ?? null;
             $sala_destino = $_POST['sala_destino_id'] ?? null;
 
-            if (!$patrimonio_id || !$sala_origem || !$sala_destino)
-                throw new Exception("Dados incompletos para o empréstimo.");
+            if (empty($patrimonio_ids) || !$sala_origem || !$sala_destino)
+                throw new Exception("Selecione os itens, a origem e o destino para a transferência.");
 
             $pdo->beginTransaction();
-            // Registra histórico no DB
-            $stmt = $pdo->prepare("INSERT INTO emprestimos (patrimonio_id, sala_origem_id, sala_destino_id) VALUES (?, ?, ?)");
-            $stmt->execute([$patrimonio_id, $sala_origem, $sala_destino]);
-            // Atualiza local físico real 
-            $stmt2 = $pdo->prepare("UPDATE patrimonios SET sala_atual_id = ? WHERE id = ?");
-            $stmt2->execute([$sala_destino, $patrimonio_id]);
+
+            foreach ($patrimonio_ids as $id) {
+                // Registra histórico no DB
+                $stmt = $pdo->prepare("INSERT INTO emprestimos (patrimonio_id, sala_origem_id, sala_destino_id) VALUES (?, ?, ?)");
+                $stmt->execute([$id, $sala_origem, $sala_destino]);
+                // Atualiza local físico real 
+                $stmt2 = $pdo->prepare("UPDATE patrimonios SET sala_atual_id = ? WHERE id = ?");
+                $stmt2->execute([$sala_destino, $id]);
+            }
 
             $pdo->commit();
-            echo json_encode(["status" => "success", "message" => "Empréstimo registrado. Patrimônio movido!"]);
+            $count = count($patrimonio_ids);
+            echo json_encode(["status" => "success", "message" => "{$count} item(ns) transferido(s) com sucesso!"]);
             break;
 
         // 6. NOTIFICAÇÕES

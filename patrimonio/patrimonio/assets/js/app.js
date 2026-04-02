@@ -35,9 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fechar modal clicando fora
     document.addEventListener('click', (e) => {
-        const modal = document.getElementById('modalNotificacoes');
-        if (modal && e.target === modal) {
+        const modalNotif = document.getElementById('modalNotificacoes');
+        if (modalNotif && e.target === modalNotif) {
             fecharModalNotificacoes();
+        }
+        const modalSala = document.getElementById('modalDetalhesSala');
+        if (modalSala && e.target === modalSala) {
+            fecharModalDetalhesSala();
         }
     });
 
@@ -555,17 +559,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const cardAtivo = document.getElementById(`sala-card-${salaId}`);
         if (cardAtivo) cardAtivo.classList.add('active');
 
-        // Atualiza UI de detalhes
-        document.getElementById('containerDetalhesSala').classList.remove('hidden');
-        document.getElementById('placeholderSalasVazio').classList.add('hidden');
-        document.getElementById('tituloSalaSelecionada').innerHTML = `<i class="bi bi-box-seam"></i> Patrimônios de ${nomeSala}`;
-
         // Salva estado
         localStorage.setItem('usuario_sala_id', salaId);
         localStorage.setItem('usuario_sala_nome', nomeSala);
 
+        // Abre o modal de detalhes
+        await abrirModalDetalhesSala(salaId, nomeSala);
+    };
+
+    window.abrirModalDetalhesSala = async function(salaId, nomeSala) {
+        const modal = document.getElementById('modalDetalhesSala');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+        
+        // Atualiza títulos do modal
+        document.getElementById('tituloSalaSelecionadaModal').innerHTML = `<i class="bi bi-box-seam" style="color: var(--senai-red);"></i> ${nomeSala}`;
+        document.getElementById('subtituloSalaSelecionadaModal').textContent = `Patrimônios vinculados a este setor`;
+
         // Carrega patrimônios
         await carregarPatrimoniosSalaAtual(salaId);
+    };
+
+    window.fecharModalDetalhesSala = function() {
+        const modal = document.getElementById('modalDetalhesSala');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
     };
 
     // --- Listeners Administrativos ---
@@ -916,59 +936,190 @@ document.addEventListener('DOMContentLoaded', () => {
     // FUNCIONALIDADE: EMPRÉSTIMOS
     // ==========================================
     async function carregarDadosEmprestimo() {
+        const selectOrigem = $('#selectSalaEmprestimoOrigem');
         const selectDestino = $('#selectSalaEmprestimoDestino');
-        const selectPat = $('#selectPatrimonioEmprestimo');
+        const containerItens = $('#listaItensParaTransferir');
 
-        if (window.listaSalasCache) {
-            populateSelect('selectSalaEmprestimoDestino', window.listaSalasCache, 'id', 'nome_sala');
-        } else {
-            const salas = await api.getSalas();
-            window.listaSalasCache = salas;
-            populateSelect('selectSalaEmprestimoDestino', salas, 'id', 'nome_sala');
+        // Carregar Salas
+        const salas = window.listaSalasCache || await api.getSalas();
+        window.listaSalasCache = salas;
+        
+        populateSelect('selectSalaEmprestimoOrigem', salas, 'id', 'nome_sala');
+        populateSelect('selectSalaEmprestimoDestino', salas, 'id', 'nome_sala', 'Selecione a sala de destino...');
+
+        // Tentar pré-selecionar a sala logada na ORIGEM
+        const salaLogadaId = localStorage.getItem('usuario_sala_id');
+        if (salaLogadaId) {
+            selectOrigem.value = salaLogadaId;
+            carregarItensParaTransferencia(salaLogadaId);
         }
 
-        const salaSalva = localStorage.getItem('usuario_sala_id');
-        if (salaSalva) {
-            // Caregar os patrimonios que estão DE FATO na minha sala, para eu só poder emprestar o que é meu
-            const itens = await api.getPatrimoniosSala(salaSalva);
-            populateSelect('selectPatrimonioEmprestimo', itens, 'id', 'nome_descricao', 'Selecione o que deseja transferir');
-        } else {
-            selectPat.innerHTML = '<option value="">Selecione primeiro uma Sala na aba "Salas"</option>';
+        // Listener para mudar a lista de itens ao mudar a origem
+        selectOrigem.addEventListener('change', (e) => {
+            carregarItensParaTransferencia(e.target.value);
+        });
+    }
+
+    async function carregarItensParaTransferencia(salaId) {
+        const container = $('#listaItensParaTransferir');
+        if (!salaId) {
+            container.innerHTML = '<p class="text-muted" style="text-align: center;">Selecione a sala de origem.</p>';
+            return;
+        }
+
+        container.innerHTML = '<div class="spinner-container-mini"><div class="spinner-mini"></div></div>';
+        
+        try {
+            const itens = await api.getPatrimoniosSala(salaId);
+            if (itens.length === 0) {
+                container.innerHTML = '<p class="text-muted" style="text-align: center; padding: 10px;">Nenhum patrimônio encontrado nesta sala.</p>';
+                return;
+            }
+
+            container.innerHTML = ''; // Limpa o loader
+            
+            itens.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'list-item-checkbox';
+                div.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid rgba(0,0,0,0.05); cursor: pointer;';
+                
+                div.innerHTML = `
+                    <input type="checkbox" name="patrimonio_ids[]" value="${item.id}" id="chk-item-${item.id}" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="chk-item-${item.id}" style="flex-grow: 1; display: flex; flex-direction: column; cursor: pointer;">
+                        <strong style="font-size: 0.9rem;">${item.nome_descricao}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Cód: ${item.numero_qrcode} | Local: ${item.identificador_aux || 'N/A'}</span>
+                    </label>
+                `;
+                
+                // Toggle checkbox ao clicar na div
+                div.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        const chk = div.querySelector('input');
+                        chk.checked = !chk.checked;
+                    }
+                });
+
+                container.appendChild(div);
+            });
+        } catch (error) {
+            container.innerHTML = '<p class="text-danger" style="text-align: center;">Erro ao carregar itens.</p>';
         }
     }
 
     $('#emprestimoForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const patId = $('#selectPatrimonioEmprestimo').value;
+        const origemId = $('#selectSalaEmprestimoOrigem').value;
         const destinoId = $('#selectSalaEmprestimoDestino').value;
-        const origemId = localStorage.getItem('usuario_sala_id'); // Sala Logada
+        
+        // Coletar itens selecionados
+        const checkedBoxes = document.querySelectorAll('input[name="patrimonio_ids[]"]:checked');
+        const idsSelecionados = Array.from(checkedBoxes).map(cb => cb.value);
 
-        if (!patId || !destinoId || !origemId) {
-            showMessage('emprestimoMessage', 'Preencha patrimônio, destino e vincule sua sala primeiramente.', 'error'); return;
+        if (idsSelecionados.length === 0) {
+            showMessage('emprestimoMessage', 'Selecione ao menos um equipamento para transferir.', 'error'); 
+            return;
+        }
+
+        if (!destinoId) {
+            showMessage('emprestimoMessage', 'Selecione o destino da transferência.', 'error'); 
+            return;
         }
 
         if (destinoId === origemId) {
-            showMessage('emprestimoMessage', 'Não é possível transferir para a mesma sala.', 'error'); return;
+            showMessage('emprestimoMessage', 'Origem e destino não podem ser iguais.', 'error'); 
+            return;
         }
 
         const btn = e.target.querySelector('button');
-        btn.disabled = true; btn.textContent = "Transferindo...";
+        btn.disabled = true; btn.textContent = "Processando transferência...";
 
         try {
-            const res = await api.registrarEmprestimo(patId, origemId, destinoId);
+            const res = await api.registrarEmprestimo(idsSelecionados, origemId, destinoId);
             if (res.status === 'success') {
                 showMessage('emprestimoMessage', res.message, 'success');
-                // Remove o item do select da minha sala, pois já foi doado
-                const optToDel = document.querySelector(`#selectPatrimonioEmprestimo option[value="${patId}"]`);
-                if (optToDel) optToDel.remove();
+                // Remove os itens processados da lista visual ou recarrega
+                carregarItensParaTransferencia(origemId);
             } else {
                 showMessage('emprestimoMessage', res.message, 'error');
             }
-        } catch (e) { showMessage('emprestimoMessage', 'Erro de conexão.', 'error'); }
-        finally { btn.disabled = false; btn.textContent = "Transferir Equipamento"; }
+        } catch (e) { 
+            console.error(e);
+            showMessage('emprestimoMessage', 'Erro de conexão ao processar transferência.', 'error'); 
+        } finally { 
+            btn.disabled = false; 
+            btn.textContent = "Concluir Transferência"; 
+        }
     });
 
-    // Inicia o polling de notificações se o usuário já estiver logado (e a função injetada pelo auth.js falhou por ordem de load)
+    // --- CADASTRO DE PATRIMÔNIO ---
+    window.abrirModalCadastrarPatrimonio = async function() {
+        const modal = document.getElementById('modalCadastrarPatrimonio');
+        if (modal) modal.classList.remove('hidden');
+
+        // Carregar Categorias e Salas
+        try {
+            const cats = await api.getCategorias();
+            const salas = window.listaSalasCache || await api.getSalas();
+            window.listaSalasCache = salas;
+
+            populateSelect('reg_categoria', cats, 'id', 'nome', 'Selecione uma categoria...');
+            populateSelect('reg_sala', salas, 'id', 'nome_sala', 'Selecione a sala de destino...');
+            
+            // Limpar mensagens e form
+            const msgDiv = document.getElementById('cadPatrimonioMessage');
+            if (msgDiv) msgDiv.innerHTML = '';
+        } catch (error) {
+            console.error("Erro ao carregar dados para o modal:", error);
+        }
+    };
+
+    window.fecharModalCadastrarPatrimonio = function() {
+        const modal = document.getElementById('modalCadastrarPatrimonio');
+        if (modal) {
+            modal.classList.add('hidden');
+            const form = document.getElementById('formCadastrarPatrimonio');
+            if (form) form.reset();
+        }
+    };
+
+    const formCadPatrimonio = $('#formCadastrarPatrimonio');
+    if (formCadPatrimonio) {
+        formCadPatrimonio.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const msgDiv = 'cadPatrimonioMessage';
+
+            const dados = {
+                numero_qrcode: $('#reg_qrcode').value,
+                nome_descricao: $('#reg_nome').value,
+                categoria_id: $('#reg_categoria').value,
+                sala_atual_id: $('#reg_sala').value
+            };
+
+            btn.disabled = true;
+            btn.textContent = "Salvando...";
+
+            try {
+                const res = await api.cadastrarPatrimonio(dados);
+                if (res.status === 'success') {
+                    showMessage(msgDiv, res.message, 'success');
+                    setTimeout(() => {
+                        fecharModalCadastrarPatrimonio();
+                        // Opcional: atualizar contador no dashboard se ele for implementado
+                    }, 1500);
+                } else {
+                    showMessage(msgDiv, res.message, 'error');
+                }
+            } catch (err) {
+                showMessage(msgDiv, "Erro ao processar cadastro.", 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Salvar Patrimônio";
+            }
+        });
+    }
+
+    // Inicia o polling de notificações...
     if (typeof window.iniciarPollingNotificacoes === 'function') {
         window.iniciarPollingNotificacoes();
     }

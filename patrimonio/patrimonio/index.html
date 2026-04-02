@@ -152,9 +152,14 @@
         <!-- ABA: SALAS & VÍNCULO    -->
         <!-- ======================= -->
         <section id="tab-salas" class="app-section fade-in hidden">
-            <div class="section-header">
-                <h2><i class="bi bi-door-open"></i> Gestão de Setores</h2>
-                <p>Administração de professores e responsabilidades</p>
+            <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h2><i class="bi bi-door-open"></i> Gestão de Setores</h2>
+                    <p>Administração de professores e responsabilidades</p>
+                </div>
+                <button class="btn-warning admin-only" style="color: white; padding: 10px 20px; font-size: 0.9rem;" onclick="abrirModalCadastrarPatrimonio()">
+                    <i class="bi bi-plus-circle"></i> Novo Patrimônio
+                </button>
             </div>
 
             <!-- Administração de Professores e Vínculos (Restrito Admin) -->
@@ -250,15 +255,6 @@
                 <!-- Lista de todas as salas injetada JS -->
             </div>
 
-            <div id="containerDetalhesSala" class="hidden mt-4">
-                <div class="section-header-mini mb-3">
-                    <h3 id="tituloSalaSelecionada">Patrimônios da Sala</h3>
-                    <p id="subtituloSalaSelecionada" class="text-muted">Gerenciando itens deste setor</p>
-                </div>
-                <div id="listaPatrimoniosSala" class="itens-lista">
-                    <!-- Itens da sala selecionada -->
-                </div>
-            </div>
 
             <div id="placeholderSalasVazio" class="hidden">
                 <p class="text-muted text-center glass-box" style="padding: 30px;">
@@ -341,8 +337,17 @@
             <div class="glass-box">
                 <form id="emprestimoForm" class="standard-form">
                     <div class="form-group">
-                        <label>Equipamento a transferir:</label>
-                        <select id="selectPatrimonioEmprestimo" class="form-control" required></select>
+                        <label>Sala de Origem (Onde está o item agora?)</label>
+                        <select id="selectSalaEmprestimoOrigem" class="form-control" required>
+                            <option value="">Selecione a sala de origem...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Selecione os Equipamentos (Nome + QR Code):</label>
+                        <div id="listaItensParaTransferir" class="glass-box" style="max-height: 250px; overflow-y: auto; padding: 15px; background: rgba(255,255,255,0.6); border-radius: 8px;">
+                            <p class="text-muted" style="font-size: 0.85rem; text-align: center; margin: 10px 0;">Selecione primeiro a sala de origem para listar os itens.</p>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -474,6 +479,61 @@
                 <button class="btn-primary" style="background:#ddd; color:#333;" onclick="fecharModalAuditoria()">Fechar
                     / Retomar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes da Sala (Novo) -->
+    <div id="modalDetalhesSala" class="modal-overlay hidden">
+        <div class="modal-content patrimonios-modal">
+            <div class="notificacoes-header">
+                <div>
+                   <h3 id="tituloSalaSelecionadaModal" style="margin: 0;"><i class="bi bi-box-seam" style="color: var(--senai-red);"></i> Patrimônios</h3>
+                   <p id="subtituloSalaSelecionadaModal" class="text-muted" style="margin-top: 5px; font-size: 0.8rem;">Listagem de itens vinculados</p>
+                </div>
+                <button class="btn-icon close-btn" onclick="fecharModalDetalhesSala()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="notificacoes-body" id="listaPatrimoniosSala">
+                <!-- Preenchido via JS -->
+            </div>
+            <div class="notificacoes-footer mt-3">
+                <button class="btn-secondary w-100" onclick="fecharModalDetalhesSala()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cadastrar Patrimônio (Novo) -->
+    <div id="modalCadastrarPatrimonio" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="notificacoes-header">
+                <div>
+                    <h3 style="margin: 0;"><i class="bi bi-plus-circle"></i> Novo Patrimônio</h3>
+                    <p class="text-muted" style="margin-top: 5px; font-size: 0.8rem;">Cadastro manual de equipamento</p>
+                </div>
+                <button class="btn-icon close-btn" onclick="fecharModalCadastrarPatrimonio()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            
+            <form id="formCadastrarPatrimonio" class="standard-form mt-3">
+                <div class="form-group mb-2">
+                    <label>Nº Inventário / QR Code:</label>
+                    <input type="text" id="reg_qrcode" class="form-control" placeholder="Ex: P001" required>
+                </div>
+                <div class="form-group mb-2">
+                    <label>Nome / Descrição:</label>
+                    <input type="text" id="reg_nome" class="form-control" placeholder="Ex: Computador Dell i7" required>
+                </div>
+                <div class="form-group mb-2">
+                    <label>Categoria:</label>
+                    <select id="reg_categoria" class="form-control" required></select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Sala de Destino:</label>
+                    <select id="reg_sala" class="form-control" required></select>
+                </div>
+                
+                <div id="cadPatrimonioMessage" class="form-messages mb-2"></div>
+                
+                <button type="submit" class="btn-primary w-100">Salvar Patrimônio</button>
+            </form>
         </div>
     </div>
 

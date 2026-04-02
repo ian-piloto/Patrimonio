@@ -39,6 +39,19 @@ const api = {
         const formData = new FormData();
         formData.append('action', 'cadastrar_sala');
         formData.append('nome_sala', nome_sala);
+
+        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
+        return await res.json();
+    },
+
+    cadastrarPatrimonio: async (dados) => {
+        const formData = new FormData();
+        formData.append('action', 'cadastrar_patrimonio');
+        formData.append('numero_qrcode', dados.numero_qrcode);
+        formData.append('nome_descricao', dados.nome_descricao);
+        formData.append('categoria_id', dados.categoria_id);
+        formData.append('sala_atual_id', dados.sala_atual_id);
+
         const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
         return await res.json();
     },
@@ -113,10 +126,16 @@ const api = {
     },
 
     // Empréstimo
-    registrarEmprestimo: async (patrimonio_id, sala_origem_id, sala_destino_id) => {
+    registrarEmprestimo: async (patrimonio_ids, sala_origem_id, sala_destino_id) => {
         const formData = new FormData();
         formData.append('action', 'registrar_emprestimo');
-        formData.append('patrimonio_id', patrimonio_id);
+        
+        if (Array.isArray(patrimonio_ids)) {
+            patrimonio_ids.forEach(id => formData.append('patrimonio_ids[]', id));
+        } else {
+            formData.append('patrimonio_ids[]', patrimonio_ids);
+        }
+
         formData.append('sala_origem_id', sala_origem_id);
         formData.append('sala_destino_id', sala_destino_id);
 
