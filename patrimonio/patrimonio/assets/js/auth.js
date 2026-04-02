@@ -61,6 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.status === 'success') {
+                    // Armazena sala do professor se retornar
+                    if (data.sala_id && data.nome_sala) {
+                        localStorage.setItem('usuario_sala_id', data.sala_id);
+                        localStorage.setItem('usuario_sala_nome', data.nome_sala);
+                    } else {
+                        // Limpa para evitar resquícios de outros logins
+                        localStorage.removeItem('usuario_sala_id');
+                        localStorage.removeItem('usuario_sala_nome');
+                    }
                     window.location.href = 'index.html';
                 } else {
                     showMessage('loginMessage', data.message, 'error');

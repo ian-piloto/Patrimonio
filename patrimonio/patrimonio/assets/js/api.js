@@ -134,6 +134,10 @@ const api = {
         const res = await fetch(`${API_ROUTES}?action=marcar_notificacoes_lidas`);
         return await res.json();
     },
+    marcarTodasLidas: async () => {
+        const res = await fetch(`${API_ROUTES}?action=marcar_todas_lidas`);
+        return await res.json();
+    },
     responderTransferencia: async (notificacao_id, resposta) => {
         const formData = new FormData();
         formData.append('action', 'responder_transferencia');

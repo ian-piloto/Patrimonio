@@ -42,7 +42,12 @@
     <div id="modalNotificacoes" class="modal-overlay hidden">
         <div class="modal-content notificacoes-modal">
             <div class="notificacoes-header">
-                <h3><i class="bi bi-bell-fill" style="color: var(--warning);"></i> Notificações</h3>
+                <div>
+                    <h3 style="margin: 0;"><i class="bi bi-bell-fill" style="color: var(--warning);"></i> Notificações</h3>
+                    <button class="btn-mark-all" onclick="marcarTodasComoLidas()">
+                        <i class="bi bi-check2-all"></i> Marcar todas como lidas
+                    </button>
+                </div>
                 <button class="btn-icon close-btn" onclick="fecharModalNotificacoes()"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="notificacoes-body" id="listaNotificacoes">

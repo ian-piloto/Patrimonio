@@ -30,10 +30,26 @@ if ($action === 'login') {
             $_SESSION['usuario_nome'] = $usuario['nome'];
             $_SESSION['usuario_tipo'] = $usuario['tipo'];
             
+            // Se for professor, busca a sala dele para auto-seleção
+            $salaInfo = null;
+            if ($usuario['tipo'] === 'professor') {
+                $stmtSala = $pdo->prepare("
+                    SELECT s.id, s.nome_sala 
+                    FROM salas s
+                    JOIN professores p ON s.professor_id = p.id
+                    WHERE p.usuario_id = ?
+                    LIMIT 1
+                ");
+                $stmtSala->execute([$usuario['id']]);
+                $salaInfo = $stmtSala->fetch();
+            }
+
             echo json_encode([
                 "status" => "success",
-                "message" => "Login realizado com sucesso (Modo Sem Criptografia)",
-                "tipo" => $usuario['tipo']
+                "message" => "Login realizado com sucesso",
+                "tipo" => $usuario['tipo'],
+                "sala_id" => $salaInfo ? $salaInfo['id'] : null,
+                "nome_sala" => $salaInfo ? $salaInfo['nome_sala'] : null
             ]);
         }
         else {

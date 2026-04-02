@@ -155,7 +155,8 @@ try {
             $sala_id = $_GET['sala_id'] ?? null;
             $stmt = $pdo->prepare("
                 SELECT p.id, p.numero_qrcode, p.nome_descricao, c.nome as categoria, 
-                       s.nome_sala, prof.nome as nome_professor
+                       s.nome_sala, prof.nome as nome_professor,
+                       s.codigo_localizacao, s.codigo_unidade, s.identificador_aux, s.bloco, s.sigla_sala
                 FROM patrimonios p
                 JOIN categorias_patrimonio c ON p.categoria_id = c.id
                 JOIN salas s ON p.sala_atual_id = s.id
@@ -421,6 +422,14 @@ try {
             // Marca como lidas apenas notificações que NÃO possuem dados de ação (botões)
             $pdo->prepare("UPDATE notificacoes SET lida = TRUE WHERE usuario_destino_id = ? AND (dados_json IS NULL OR dados_json = '')")->execute([$userId]);
             echo json_encode(["status" => "success", "message" => "Notificações marcadas como lidas."]);
+            break;
+
+        case 'marcar_todas_lidas':
+            $userId = $_SESSION['usuario_id'] ?? null;
+            if (!$userId) throw new Exception("Não autorizado.");
+            // Marca TODAS as notificações como lidas
+            $pdo->prepare("UPDATE notificacoes SET lida = TRUE WHERE usuario_destino_id = ?")->execute([$userId]);
+            echo json_encode(["status" => "success", "message" => "Todas as notificações foram marcadas como lidas."]);
             break;
 
         default:

@@ -351,6 +351,35 @@ button {
     gap: 8px;
 }
 
+.btn-mark-all {
+    background: rgba(26, 115, 232, 0.08);
+    color: #1a73e8;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.btn-mark-all:hover {
+    background: rgba(26, 115, 232, 0.15);
+    transform: translateY(-1px);
+}
+
+.btn-mark-all:active {
+    transform: translateY(0);
+}
+
+.btn-mark-all i {
+    font-size: 0.8rem;
+}
+
 .notificacoes-body {
     overflow-y: auto;
     flex-grow: 1;

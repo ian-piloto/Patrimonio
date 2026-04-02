@@ -13,12 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) {
             modal.classList.remove('hidden');
         }
-        // Marca como lidas ao abrir
-        await api.marcarNotificacoesLidas();
-        // Atualiza badge para 0
-        atualizarBadgeNotificacoes(0);
-        // Recarrega para mostrar como lidas
+        
+        // Carrega notificações (mostra as não lidas)
         await carregarNotificacoes();
+        
+        // Marca as informativas como lidas no banco para não aparecerem na próxima vez
+        await api.marcarNotificacoesLidas();
+        
+        // Atualiza badge para o que restou (provavelmente só as de ação)
+        const notificacoes = await api.getNotificacoes();
+        const naoLidas = notificacoes.filter(n => !n.lida).length;
+        atualizarBadgeNotificacoes(naoLidas);
     };
 
     window.fecharModalNotificacoes = function() {
@@ -42,20 +47,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const notificacoes = await api.getNotificacoes();
+            const unreadOnly = notificacoes.filter(n => !n.lida);
 
-            if (notificacoes.length === 0) {
+            if (unreadOnly.length === 0) {
                 lista.innerHTML = `
                     <div class="notificacao-vazia">
                         <i class="bi bi-bell-slash" style="font-size: 2.5rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
                         Nenhuma notificação no momento.
                     </div>`;
+                atualizarBadgeNotificacoes(0);
                 return;
             }
 
-            const naoLidas = notificacoes.filter(n => !n.lida).length;
-            atualizarBadgeNotificacoes(naoLidas);
+            atualizarBadgeNotificacoes(unreadOnly.length);
 
-            lista.innerHTML = notificacoes.map(n => {
+            lista.innerHTML = unreadOnly.map(n => {
                 const dataObj = new Date(n.criada_em);
                 const dataStr = dataObj.toLocaleDateString('pt-BR');
                 const horaStr = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -115,6 +121,19 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.classList.add('hidden');
         }
     }
+
+    window.marcarTodasComoLidas = async function() {
+        try {
+            const res = await api.marcarTodasLidas();
+            if (res.status === 'success') {
+                // Ao marcar todas, limpamos a visualização
+                await carregarNotificacoes();
+                atualizarBadgeNotificacoes(0);
+            }
+        } catch (e) {
+            console.error('Erro ao marcar todas como lidas', e);
+        }
+    };
 
     // Event handlers para botões de notificação
     window.responderTransferencia = async function(notifId, resposta) {
@@ -760,10 +779,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (todosItensSessao.length === 0) return;
 
-        // Gerar Excel usando o template do usuário (PATRIMONIO_FORMATADO.xlsx)
+        // Gerar Excel usando o template do usuário (Patrimonio BLOCO C1 - BRUNO.xlsx)
         try {
             // Busca o arquivo template no servidor localmente para o frontend usar
-            const response = await fetch('PATRIMONIO_FORMATADO.xlsx');
+            const response = await fetch('Patrimonio BLOCO C1 - BRUNO.xlsx');
             if (!response.ok) throw new Error("Template não encontrado.");
             const arrayBuffer = await response.arrayBuffer();
             
@@ -776,19 +795,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const dadosEmFormatoDeArray = todosItensSessao.map(item => {
                 const status = (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando";
                 return [
-                    "20770001", // Default template col
-                    "2077",     // Default
-                    "00",       // Default
-                    "01",       // Default
-                    "", "", "", // Espaços Vazios (Merged cols)
-                    item.numero_qrcode, // N INVENTÁRIO (Índice H - 7)
-                    "",
-                    dataStr, // DATA INCORP (Índice J - 9)
-                    item.nome_descricao, // DENOMINAÇÃO (Índice K - 10)
-                    item.nome_professor || "Sem Prof.", // RESPONSAVEL (Índice L - 11)
-                    status, // OCORRÊNCIA/STATUS (Índice M - 12)
-                    item.nome_sala, // EXTRA (Sala Destino)
-                    "" // Disp
+                    null, // Col A (Index 0)
+                    item.codigo_localizacao || "", // B (Index 1)
+                    item.codigo_unidade || "",     // C (Index 2)
+                    item.identificador_aux || "",  // D (Index 3)
+                    item.bloco || "",              // E (Index 4)
+                    item.sigla_sala || "",         // F (Index 5)
+                    item.nome_sala || "",          // G (Index 6)
+                    "",                            // H (Index 7) -> IMOB (Opcional)
+                    item.numero_qrcode,            // I (Index 8) -> Nº INVENTÁRIO
+                    "",                            // J (Index 9) -> DATA INCORP
+                    item.nome_descricao,           // K (Index 10) -> DENOMINAÇÃO
+                    item.nome_professor || "",     // L (Index 11) -> RESPONSÁVEL
+                    status                         // M (Index 12) -> STATUS/OCORRÊNCIA
                 ];
             });
 
@@ -802,13 +821,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Erro ao usar template Excel, fazendo fallback para tabela simples:", err);
             // Fallback original
             const dadosExcel = todosItensSessao.map(item => ({
-                "Sala": item.nome_sala,
-                "Equipamento": item.nome_descricao,
-                "QR Code": item.numero_qrcode,
-                "Prof. Responsável": item.nome_professor || "Não atribuído",
-                "Data": dataStr,
-                "Hora": horaStr,
-                "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Presente" : "Faltando"
+                "Setor": item.nome_sala,
+                "Descrição": item.nome_descricao,
+                "QR Code (Inv)": item.numero_qrcode,
+                "Responsável": item.nome_professor || "Não atribuído",
+                "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando"
             }));
             const workbook = XLSX.utils.book_new();
             const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
