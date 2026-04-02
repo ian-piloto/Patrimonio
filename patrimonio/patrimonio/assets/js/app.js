@@ -435,9 +435,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 3. Se for professor, carrega os seus vínculos específicos
             await carregarMinhasSalas();
+
+            // 4. Inicializa o buscador de salas em tempo real
+            inicializarBuscaSalas();
         } catch (e) {
             console.error(e);
         }
+    }
+
+    function inicializarBuscaSalas() {
+        const inputBusca = document.getElementById('inputBuscaSala');
+        if (!inputBusca || inputBusca.dataset.searchInitialized) return;
+
+        inputBusca.addEventListener('input', (e) => {
+            const termo = e.target.value.toLowerCase().trim();
+            if (!window.listaSalasCache) return;
+
+            const salasFiltradas = window.listaSalasCache.filter(sala => {
+                const nomeSala = (sala.nome_sala || '').toLowerCase();
+                const nomeProf = (sala.nome_professor || '').toLowerCase();
+                return nomeSala.includes(termo) || nomeProf.includes(termo);
+            });
+
+            renderizarListaSalasGeral(salasFiltradas);
+        });
+
+        inputBusca.dataset.searchInitialized = "true";
     }
 
     // Listener para o novo formulário de desvinculação administrative

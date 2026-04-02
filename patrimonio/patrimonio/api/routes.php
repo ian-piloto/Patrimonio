@@ -168,6 +168,11 @@ try {
             break;
 
         case 'cadastrar_patrimonio':
+            // Verificação de Admin no Servidor
+            if (($_SESSION['usuario_tipo'] ?? '') !== 'admin') {
+                throw new Exception("Apenas administradores podem cadastrar novos patrimônios.");
+            }
+
             $qrcode = trim($_POST['numero_qrcode'] ?? '');
             $nome = trim($_POST['nome_descricao'] ?? '');
             $categoria_id = $_POST['categoria_id'] ?? null;
