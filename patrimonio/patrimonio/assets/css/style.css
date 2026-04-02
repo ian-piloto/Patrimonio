@@ -450,6 +450,92 @@ button {
     line-height: 1.4;
 }
 
+/* --- NOVO RODAPÉ (FOOTER) --- */
+footer {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 30px 20px 100px 20px; /* Padding bottom maior para não cobrir pela bottom-nav */
+    margin-top: 40px;
+    color: var(--text-main);
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 30px;
+}
+
+.footer-section {
+    flex: 1;
+    min-width: 200px;
+}
+
+.footer-section h4 {
+    color: var(--senai-red);
+    font-size: 1rem;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+}
+
+.footer-section p, .footer-section a {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 8px;
+    transition: color 0.2s;
+}
+
+.footer-section a:hover {
+    color: var(--senai-red);
+}
+
+.social-links {
+    display: flex;
+    gap: 15px;
+}
+
+.social-links a {
+    font-size: 1.3rem;
+    color: var(--text-main);
+    transition: transform 0.2s, color 0.2s;
+}
+
+.social-links a:hover {
+    transform: translateY(-3px);
+    color: var(--senai-red);
+}
+
+.footer-bottom {
+    max-width: 1200px;
+    margin: 30px auto 0;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column;
+        text-align: center;
+    }
+    .social-links {
+        justify-content: center;
+    }
+    footer {
+        padding-bottom: 110px;
+    }
+}
+
 /* ==================================
    GESTÃO DE MÚLTIPLAS SALAS (PREMIUM)
    ================================== */

@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <link rel="stylesheet" href="assets/css/style.css?v=2">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/img/favicon.png?v=1">
     <!-- Biblioteca HTML5 QR Code -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- SheetJS (Geração de Excel) -->
@@ -27,7 +29,8 @@
             </div>
             <div class="user-profile">
                 <!-- Botão de Notificações -->
-                <button id="btnNotificacoes" class="btn-icon bell-large" title="Notificações" onclick="abrirModalNotificacoes(event)">
+                <button id="btnNotificacoes" class="btn-icon bell-large" title="Notificações"
+                    onclick="abrirModalNotificacoes(event)">
                     <i class="bi bi-bell-fill"></i>
                     <span id="badgeNotificacoes" class="badge-notificacao hidden">0</span>
                 </button>
@@ -43,16 +46,19 @@
         <div class="modal-content notificacoes-modal">
             <div class="notificacoes-header">
                 <div>
-                    <h3 style="margin: 0;"><i class="bi bi-bell-fill" style="color: var(--warning);"></i> Notificações</h3>
+                    <h3 style="margin: 0;"><i class="bi bi-bell-fill" style="color: var(--warning);"></i> Notificações
+                    </h3>
                     <button class="btn-mark-all" onclick="marcarTodasComoLidas()">
                         <i class="bi bi-check2-all"></i> Marcar todas como lidas
                     </button>
                 </div>
-                <button class="btn-icon close-btn" onclick="fecharModalNotificacoes()"><i class="bi bi-x-lg"></i></button>
+                <button class="btn-icon close-btn" onclick="fecharModalNotificacoes()"><i
+                        class="bi bi-x-lg"></i></button>
             </div>
             <div class="notificacoes-body" id="listaNotificacoes">
                 <div class="notificacao-vazia">
-                    <i class="bi bi-bell-slash" style="font-size: 2.5rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
+                    <i class="bi bi-bell-slash"
+                        style="font-size: 2.5rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
                     Nenhuma notificação no momento.
                 </div>
             </div>
@@ -137,7 +143,8 @@
                 </div>
 
                 <div class="export-container-premium mt-4">
-                    <button id="btnExportFinal" type="button" class="btn-export-wow" onclick="finalizarAuditoria('excel')">
+                    <button id="btnExportFinal" type="button" class="btn-export-wow"
+                        onclick="finalizarAuditoria('excel')">
                         <div class="btn-wow-content">
                             <i class="bi bi-file-earmark-spreadsheet"></i>
                             <span>CONCLUIR E EXPORTAR EXCEL</span>
@@ -152,12 +159,15 @@
         <!-- ABA: SALAS & VÍNCULO    -->
         <!-- ======================= -->
         <section id="tab-salas" class="app-section fade-in hidden">
-            <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
+            <div class="section-header"
+                style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
                 <div>
                     <h2><i class="bi bi-door-open"></i> Gestão de Setores</h2>
                     <p>Administração de professores e responsabilidades</p>
                 </div>
-                <button class="btn-warning restricted-access" style="color: white; padding: 10px 20px; font-size: 0.9rem;" onclick="abrirModalCadastrarPatrimonio()">
+                <button class="btn-warning restricted-access"
+                    style="color: white; padding: 10px 20px; font-size: 0.9rem;"
+                    onclick="abrirModalCadastrarPatrimonio()">
                     <i class="bi bi-plus-circle"></i> Novo Patrimônio
                 </button>
             </div>
@@ -167,15 +177,18 @@
                 <div style="display: flex; flex-wrap: wrap; gap: 15px;">
                     <!-- Cadastro de Professores -->
                     <div class="glass-box" style="flex: 1; min-width: 280px;">
-                        <h3 class="mb-3" style="font-size: 1.1rem;"><i class="bi bi-person-plus"></i> Cadastrar Professor</h3>
+                        <h3 class="mb-3" style="font-size: 1.1rem;"><i class="bi bi-person-plus"></i> Cadastrar
+                            Professor</h3>
                         <form id="cadastrarProfessorForm" class="standard-form">
                             <div class="form-group">
                                 <label>Nome do Professor:</label>
-                                <input type="text" id="profNome" class="form-control" placeholder="Ex: Professor João" required>
+                                <input type="text" id="profNome" class="form-control" placeholder="Ex: Professor João"
+                                    required>
                             </div>
                             <div class="form-group mt-2">
                                 <label>E-mail:</label>
-                                <input type="email" id="profEmail" class="form-control" placeholder="joao@senai.br" required>
+                                <input type="email" id="profEmail" class="form-control" placeholder="joao@senai.br"
+                                    required>
                             </div>
                             <div class="form-group mt-2">
                                 <label>Senha Inicial:</label>
@@ -188,7 +201,8 @@
 
                     <!-- Vínculo de Professor a Sala -->
                     <div class="glass-box" style="flex: 1; min-width: 250px;">
-                        <h3 class="mb-3" style="font-size: 1.1rem; color: var(--senai-red);"><i class="bi bi-link-45deg"></i> Vincular Novo</h3>
+                        <h3 class="mb-3" style="font-size: 1.1rem; color: var(--senai-red);"><i
+                                class="bi bi-link-45deg"></i> Vincular Novo</h3>
                         <form id="vincularAdminForm" class="standard-form">
                             <div class="form-group">
                                 <label>Selecionar Professor:</label>
@@ -202,14 +216,15 @@
                                     <option value="">Carregando salas...</option>
                                 </select>
                             </div>
-                <button type="submit" class="btn-warning mt-3 w-100">Realizar Vínculo</button>
+                            <button type="submit" class="btn-warning mt-3 w-100">Realizar Vínculo</button>
                             <div id="msgVincAdmin" class="form-messages mt-2"></div>
                         </form>
                     </div>
 
                     <!-- REMOVER RESPONSABILIDADE (NOVO) -->
                     <div class="glass-box" style="flex: 1; min-width: 250px;">
-                        <h3 class="mb-3" style="font-size: 1.1rem; color: var(--senai-red);"><i class="bi bi-person-dash"></i> Remover Vínculo</h3>
+                        <h3 class="mb-3" style="font-size: 1.1rem; color: var(--senai-red);"><i
+                                class="bi bi-person-dash"></i> Remover Vínculo</h3>
                         <form id="desvincularAdminForm" class="standard-form">
                             <div class="form-group">
                                 <label>Sala a Desocupar:</label>
@@ -217,8 +232,10 @@
                                     <option value="">Carregando salas ocupadas...</option>
                                 </select>
                             </div>
-                            <p class="text-muted mt-2" style="font-size: 0.8rem;">Isso removerá o professor responsável pelo setor sem excluir os dados.</p>
-                            <button type="submit" class="btn-primary mt-2 w-100" style="background: var(--text-main);">Remover Professor</button>
+                            <p class="text-muted mt-2" style="font-size: 0.8rem;">Isso removerá o professor responsável
+                                pelo setor sem excluir os dados.</p>
+                            <button type="submit" class="btn-primary mt-2 w-100"
+                                style="background: var(--text-main);">Remover Professor</button>
                             <div id="msgDesvincAdmin" class="form-messages mt-2"></div>
                         </form>
                     </div>
@@ -227,10 +244,12 @@
                 <!-- Criar Sala -->
                 <div class="glass-box mt-3" id="formCriarSalaAdmin">
                     <h3 style="font-size: 1.1rem;"><i class="bi bi-plus-circle"></i> Novo Setor</h3>
-                    <form id="criarSalaForm" class="standard-form" style="display: flex; gap: 10px; align-items: flex-end;">
+                    <form id="criarSalaForm" class="standard-form"
+                        style="display: flex; gap: 10px; align-items: flex-end;">
                         <div class="form-group" style="flex: 1;">
                             <label>Nome do Setor:</label>
-                            <input type="text" id="inputNovaSala" class="form-control" placeholder="Ex: Laboratório 3" required>
+                            <input type="text" id="inputNovaSala" class="form-control" placeholder="Ex: Laboratório 3"
+                                required>
                         </div>
                         <button type="submit" class="btn-primary" style="height: 45px; width: 120px;">Criar</button>
                     </form>
@@ -252,11 +271,14 @@
             </div>
 
             <!-- Campo de Busca de Salas -->
-            <div class="glass-box mb-3" style="padding: 10px 15px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.3);">
+            <div class="glass-box mb-3"
+                style="padding: 10px 15px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.3);">
                 <i class="bi bi-search" style="color: var(--text-muted);"></i>
-                <input type="text" id="inputBuscaSala" class="form-control-transparent" placeholder="Digite o nome de uma sala ou professor..." style="flex: 1; border: none; background: transparent; outline: none; font-size: 0.9rem;">
+                <input type="text" id="inputBuscaSala" class="form-control-transparent"
+                    placeholder="Digite o nome de uma sala ou professor..."
+                    style="flex: 1; border: none; background: transparent; outline: none; font-size: 0.9rem;">
             </div>
-            
+
             <div id="listaSalasGeral" class="itens-lista">
                 <!-- Lista de todas as salas injetada JS -->
             </div>
@@ -264,7 +286,8 @@
 
             <div id="placeholderSalasVazio" class="hidden">
                 <p class="text-muted text-center glass-box" style="padding: 30px;">
-                    <i class="bi bi-info-circle" style="font-size: 2rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
+                    <i class="bi bi-info-circle"
+                        style="font-size: 2rem; display: block; margin-bottom: 15px; color: #ccc;"></i>
                     Nenhuma sala vinculada ou selecionada.
                 </p>
             </div>
@@ -351,8 +374,10 @@
 
                     <div class="form-group mt-3">
                         <label>Selecione os Equipamentos (Nome + QR Code):</label>
-                        <div id="listaItensParaTransferir" class="glass-box" style="max-height: 250px; overflow-y: auto; padding: 15px; background: rgba(255,255,255,0.6); border-radius: 8px;">
-                            <p class="text-muted" style="font-size: 0.85rem; text-align: center; margin: 10px 0;">Selecione primeiro a sala de origem para listar os itens.</p>
+                        <div id="listaItensParaTransferir" class="glass-box"
+                            style="max-height: 250px; overflow-y: auto; padding: 15px; background: rgba(255,255,255,0.6); border-radius: 8px;">
+                            <p class="text-muted" style="font-size: 0.85rem; text-align: center; margin: 10px 0;">
+                                Selecione primeiro a sala de origem para listar os itens.</p>
                         </div>
                     </div>
 
@@ -418,8 +443,11 @@
                 <form id="importLoteForm" class="standard-form">
                     <div class="form-group">
                         <label>Arquivo Excel (.xlsx ou .csv):</label>
-                        <input type="file" id="importArquivo" class="form-control" accept=".xlsx, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv" required>
-                        <small class="text-muted" style="display:block; margin-top: 5px;">O sistema lerá a linha 5 do modelo, coluna H (Nº Inventário) e K (Denominação).</small>
+                        <input type="file" id="importArquivo" class="form-control"
+                            accept=".xlsx, .csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv"
+                            required>
+                        <small class="text-muted" style="display:block; margin-top: 5px;">O sistema lerá a linha 5 do
+                            modelo, coluna H (Nº Inventário) e K (Denominação).</small>
                     </div>
 
                     <div class="form-group">
@@ -436,7 +464,9 @@
                         </select>
                     </div>
 
-                    <button type="submit" id="btnImportLote" class="btn-success w-100 mt-2" style="background:var(--success); color:white; border:none; padding:12px; border-radius:8px; font-weight:600;"><i class="bi bi-cloud-upload"></i> Processar Planilha</button>
+                    <button type="submit" id="btnImportLote" class="btn-success w-100 mt-2"
+                        style="background:var(--success); color:white; border:none; padding:12px; border-radius:8px; font-weight:600;"><i
+                            class="bi bi-cloud-upload"></i> Processar Planilha</button>
                     <div id="importLoteMessage" class="form-messages mt-3"></div>
                 </form>
             </div>
@@ -444,6 +474,40 @@
         </section>
 
     </main>
+
+    <!-- Rodapé Institucional -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4><i class="bi bi-info-circle"></i> Sobre o Sistema</h4>
+                <p>Plataforma inteligente para gestão e auditoria de patrimônios do SENAI Santa Catarina.</p>
+                <a href="https://www.sp.senai.br/unidade/votuporanga/" bi bi-box-arrow-up-right></i> Visite o
+                    Portal SENAI</a>
+            </div>
+
+            <div class="footer-section">
+                <h4><i class="bi bi-envelope-at"></i> Contato</h4>
+                <p><i class="bi bi-chat-dots"></i> senaivotuporanga@sp.senai.br</p>
+                <p><i class="bi bi-telephone"></i> (17) 3426-8210</p>
+                <p><i class="bi bi-geo-alt"></i> Votuporanga - SP</p>
+            </div>
+
+            <div class="footer-section">
+                <h4><i class="bi bi-share"></i> Redes Sociais</h4>
+                <div class="social-links">
+                    <a href="#" title="Instagram"><i class="bi bi-instagram"></i></a>
+                    <a href="#" title="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                    <a href="#" title="GitHub"><i class="bi bi-github"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 <strong>Patrimônio SENAI</strong>. Marca Registrada. Todos os direitos reservados.</p>
+            <p style="font-size: 0.7rem; margin-top: 5px; opacity: 0.7;">Desenvolvido para gestão administrativa SENAI -
+                Votuporanga
+        </div>
+    </footer>
 
     <!-- Navegação Inferior (Mobile Tabs) -->
     <nav class="bottom-nav">
@@ -493,10 +557,13 @@
         <div class="modal-content patrimonios-modal">
             <div class="notificacoes-header">
                 <div>
-                   <h3 id="tituloSalaSelecionadaModal" style="margin: 0;"><i class="bi bi-box-seam" style="color: var(--senai-red);"></i> Patrimônios</h3>
-                   <p id="subtituloSalaSelecionadaModal" class="text-muted" style="margin-top: 5px; font-size: 0.8rem;">Listagem de itens vinculados</p>
+                    <h3 id="tituloSalaSelecionadaModal" style="margin: 0;"><i class="bi bi-box-seam"
+                            style="color: var(--senai-red);"></i> Patrimônios</h3>
+                    <p id="subtituloSalaSelecionadaModal" class="text-muted"
+                        style="margin-top: 5px; font-size: 0.8rem;">Listagem de itens vinculados</p>
                 </div>
-                <button class="btn-icon close-btn" onclick="fecharModalDetalhesSala()"><i class="bi bi-x-lg"></i></button>
+                <button class="btn-icon close-btn" onclick="fecharModalDetalhesSala()"><i
+                        class="bi bi-x-lg"></i></button>
             </div>
             <div class="notificacoes-body" id="listaPatrimoniosSala">
                 <!-- Preenchido via JS -->
@@ -515,9 +582,10 @@
                     <h3 style="margin: 0;"><i class="bi bi-plus-circle"></i> Novo Patrimônio</h3>
                     <p class="text-muted" style="margin-top: 5px; font-size: 0.8rem;">Cadastro manual de equipamento</p>
                 </div>
-                <button class="btn-icon close-btn" onclick="fecharModalCadastrarPatrimonio()"><i class="bi bi-x-lg"></i></button>
+                <button class="btn-icon close-btn" onclick="fecharModalCadastrarPatrimonio()"><i
+                        class="bi bi-x-lg"></i></button>
             </div>
-            
+
             <form id="formCadastrarPatrimonio" class="standard-form mt-3">
                 <div class="form-group mb-2">
                     <label>Nº Inventário / QR Code:</label>
@@ -535,9 +603,9 @@
                     <label>Sala de Destino:</label>
                     <select id="reg_sala" class="form-control" required></select>
                 </div>
-                
+
                 <div id="cadPatrimonioMessage" class="form-messages mb-2"></div>
-                
+
                 <button type="submit" class="btn-primary w-100">Salvar Patrimônio</button>
             </form>
         </div>
