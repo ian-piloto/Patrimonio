@@ -798,7 +798,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Exportação em Excel (Conclusão de Auditoria)
+    // Exportação em Excel Profissional (Usa ExcelJS para manter formatação do Template)
     window.finalizarAuditoria = async function () {
         if (!window.salasAuditadasNaSessao || Object.keys(window.salasAuditadasNaSessao).length === 0) {
             alert("Nenhuma sala foi auditada ainda.");
@@ -808,73 +808,96 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnExport = document.getElementById('btnExportFinal');
         if(btnExport) {
             btnExport.disabled = true;
-            btnExport.querySelector('span').textContent = 'GERANDO...';
+            btnExport.querySelector('span').textContent = 'GERANDO RELATÓRIO...';
         }
-
-        const agora = new Date();
-        const dataStr = agora.toLocaleDateString('pt-BR');
-        const horaStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
         let todosItensSessao = [];
         for (const salaId in window.salasAuditadasNaSessao) {
             todosItensSessao = todosItensSessao.concat(window.salasAuditadasNaSessao[salaId]);
         }
 
-        if (todosItensSessao.length === 0) return;
+        if (todosItensSessao.length === 0) {
+            alert("Nenhum item encontrado para exportar.");
+            if(btnExport) {
+                btnExport.disabled = false;
+                btnExport.querySelector('span').textContent = 'CONCLUIR E EXPORTAR EXCEL';
+            }
+            return;
+        }
 
-        // Gerar Excel usando o template do usuário (Patrimonio BLOCO C1 - BRUNO.xlsx)
         try {
-            // Busca o arquivo template no servidor localmente para o frontend usar
-            const response = await fetch('Patrimonio BLOCO C1 - BRUNO.xlsx');
-            if (!response.ok) throw new Error("Template não encontrado.");
-            const arrayBuffer = await response.arrayBuffer();
+            console.log("Iniciando exportação com ExcelJS...");
             
-            // Lê o template
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
+            // 1. Busca o arquivo template original do servidor
+            const response = await fetch('Patrimonio BLOCO C1 - BRUNO.xlsx');
+            if (!response.ok) throw new Error("Template 'Patrimonio BLOCO C1 - BRUNO.xlsx' não encontrado no servidor.");
+            const arrayBuffer = await response.arrayBuffer();
 
-            // Montar array of arrays (AOA) para anexar a partir da linha 5
-            const dadosEmFormatoDeArray = todosItensSessao.map(item => {
+            // 2. Carrega o workbook usando ExcelJS
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(arrayBuffer);
+            
+            // Seleciona a primeira aba
+            const worksheet = workbook.worksheets[0];
+
+            // 3. Preenche os dados a partir da linha 5
+            // De acordo com o modelo original:
+            // Col A: LOCALIZ (Index 1)
+            // Col B: NOME DO AMBIENTE (Index 2)
+            // Col C: IMOB (Index 3)
+            // Col D: Nº INVENTÁRIO (Index 4)
+            // ... segue o mapeamento do seu modelo original
+            
+            let currentRow = 5;
+            todosItensSessao.forEach(item => {
+                const row = worksheet.getRow(currentRow);
+                
+                // Mapeamento baseado no seu arquivo original (indices 1-based no ExcelJS)
+                const ambienteFull = `${item.codigo_unidade || ''} ${item.bloco || ''} ${item.sigla_sala || ''} ${item.nome_sala || ''}`.trim();
                 const status = (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando";
-                return [
-                    null, // Col A (Index 0)
-                    item.codigo_localizacao || "", // B (Index 1)
-                    item.codigo_unidade || "",     // C (Index 2)
-                    item.identificador_aux || "",  // D (Index 3)
-                    item.bloco || "",              // E (Index 4)
-                    item.sigla_sala || "",         // F (Index 5)
-                    item.nome_sala || "",          // G (Index 6)
-                    "",                            // H (Index 7) -> IMOB (Opcional)
-                    item.numero_qrcode,            // I (Index 8) -> Nº INVENTÁRIO
-                    "",                            // J (Index 9) -> DATA INCORP
-                    item.nome_descricao,           // K (Index 10) -> DENOMINAÇÃO
-                    item.nome_professor || "",     // L (Index 11) -> RESPONSÁVEL
-                    status                         // M (Index 12) -> STATUS/OCORRÊNCIA
-                ];
+
+                row.getCell(1).value = item.codigo_localizacao || "";      // A: LOCALIZ.
+                row.getCell(2).value = ambienteFull;                      // B: NOME DO AMBIENTE
+                row.getCell(3).value = "";                                // C: IMOB (Opcional)
+                row.getCell(4).value = item.numero_qrcode;                // D: Nº INVENTÁRIO
+                row.getCell(5).value = "";                                // E: DATA INCORP
+                row.getCell(6).value = item.nome_descricao;               // F: DENOMINAÇÃO
+                row.getCell(7).value = item.nome_professor || "";         // G: RESPONSÁVEL
+                row.getCell(8).value = status;                            // H: STATUS/OCORRÊNCIA
+                
+                // Estilização básica das bordas para as novas linhas se necessário, 
+                // mas o ExcelJS herda estilos se a linha já existir no template.
+                row.commit();
+                currentRow++;
             });
 
-            // Adicionar os dados no sheet a partir da célula A5 (linha index 4)
-            XLSX.utils.sheet_add_aoa(worksheet, dadosEmFormatoDeArray, { origin: "A5" });
+            // 4. Gera o buffer e dispara o download via FileSaver
+            const buffer = await workbook.xlsx.writeBuffer();
+            const dataStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+            saveAs(new Blob([buffer]), `Auditoria_Patrimonio_${dataStr}.xlsx`);
 
-            // Salvar
-            XLSX.writeFile(workbook, `Auditoria_Patrimonio_${dataStr.replace(/\//g, '-')}.xlsx`);
-            
+            console.log("Exportação concluída com sucesso!");
+
         } catch (err) {
-            console.error("Erro ao usar template Excel, fazendo fallback para tabela simples:", err);
-            // Fallback original
-            const dadosExcel = todosItensSessao.map(item => ({
-                "Setor": item.nome_sala,
-                "Descrição": item.nome_descricao,
-                "QR Code (Inv)": item.numero_qrcode,
-                "Responsável": item.nome_professor || "Não atribuído",
-                "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando"
-            }));
-            const workbook = XLSX.utils.book_new();
-            const worksheet = XLSX.utils.json_to_sheet(dadosExcel);
-            worksheet['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 15 }];
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Auditoria");
-            XLSX.writeFile(workbook, `Auditoria_Patrimonio_${dataStr.replace(/\//g, '-')}.xlsx`);
+            console.error("Erro na exportação ExcelJS:", err);
+            alert("Erro ao gerar relatório profissional. Tentando exportação simples...");
+            
+            // Fallback para SheetJS (xlsx) simples caso o ExcelJS falhe
+            try {
+                const dadosExcel = todosItensSessao.map(item => ({
+                    "Setor": item.nome_sala,
+                    "Descrição": item.nome_descricao,
+                    "QR Code": item.numero_qrcode,
+                    "Responsável": item.nome_professor || "Não atribuído",
+                    "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando"
+                }));
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(dadosExcel);
+                XLSX.utils.book_append_sheet(wb, ws, "Auditoria");
+                XLSX.writeFile(wb, `Auditoria_Simples_${new Date().getTime()}.xlsx`);
+            } catch (e2) {
+                alert("Falha crítica na exportação.");
+            }
         } finally {
             if(btnExport) {
                 btnExport.disabled = false;
