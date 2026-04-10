@@ -291,7 +291,8 @@ try {
                             'type' => 'TRANSFER_REQUEST_PROF',
                             'patrimonio_id' => $patrimonio_id,
                             'sala_origem_id' => $sala_encontrada,
-                            'sala_destino_id' => $sala_destino_id
+                            'sala_destino_id' => $sala_destino_id,
+                            'solicitante_id' => $_SESSION['usuario_id'] ?? null
                         ]);
                         
                         $msg = "O professor da sala '{$details['sala_origem']}' solicitou a transferência do item '{$details['nome_descricao']}' ({$details['numero_qrcode']}) para sua sala ('{$salaDest['nome_sala']}'). Você aceita?";
@@ -300,6 +301,18 @@ try {
                         $stmtNotif->execute([$userDest['usuario_id'], "Solicitação de Transferência", $msg, $dados]);
                     }
                 }
+            }
+
+            // NOTIFICAÇÃO AUTOMÁTICA PARA TODOS OS ADMINS (Nova Regra)
+            $admins = $pdo->query("SELECT id FROM usuarios WHERE tipo = 'admin'")->fetchAll();
+            $stmtAdminNotif = $pdo->prepare("INSERT INTO notificacoes (usuario_destino_id, titulo, mensagem, dados_json) VALUES (?, ?, ?, ?)");
+            
+            $tituloAdmin = "Nova Ocorrência: {$tipo}";
+            $msgAdmin = "Um novo incidente do tipo '{$tipo}' foi registrado para o item '{$details['nome_descricao']}' ({$details['numero_qrcode']}). Verifique a central de ocorrências.";
+            $dadosJSON = json_encode(['type' => 'NEW_OCORRENCIA_ADMIN', 'patrimonio_id' => $patrimonio_id]);
+
+            foreach ($admins as $admin) {
+                $stmtAdminNotif->execute([$admin['id'], $tituloAdmin, $msgAdmin, $dadosJSON]);
             }
 
             $pdo->commit();
@@ -343,6 +356,36 @@ try {
             echo json_encode(["status" => "success", "message" => "Resposta registrada!"]);
             break;
 
+        case 'recusar_transferencia_admin':
+            $notificacao_id = $_POST['notificacao_id'] ?? null;
+            if (!$notificacao_id) throw new Exception("ID da notificação obrigatório.");
+
+            $pdo->beginTransaction();
+
+            $stmtNotif = $pdo->prepare("SELECT * FROM notificacoes WHERE id = ?");
+            $stmtNotif->execute([$notificacao_id]);
+            $notif = $stmtNotif->fetch();
+
+            if (!$notif || !$notif['dados_json']) throw new Exception("Notificação inválida.");
+            $dados = json_decode($notif['dados_json'], true);
+
+            // Notifica o solicitante sobre a recusa
+            if (isset($dados['solicitante_id'])) {
+                $stmtSolicitante = $pdo->prepare("INSERT INTO notificacoes (usuario_destino_id, titulo, mensagem) VALUES (?, ?, ?)");
+                $stmtSolicitante->execute([
+                    $dados['solicitante_id'], 
+                    "Pedido de transferência recusado", 
+                    "A administração recusou o seu pedido de transferência do patrimônio ID {$dados['patrimonio_id']}."
+                ]);
+            }
+
+            // Marca lida (some do sininho) e registra o status
+            $pdo->prepare("UPDATE notificacoes SET lida = 1, resultado_acao = 'recusado' WHERE id = ?")->execute([$notificacao_id]);
+
+            $pdo->commit();
+            echo json_encode(["status" => "success", "message" => "Transferência recusada e solicitante notificado."]);
+            break;
+
         case 'executar_transferencia_admin':
             $notificacao_id = $_POST['notificacao_id'] ?? null;
             if (!$notificacao_id) throw new Exception("ID da notificação obrigatório.");
@@ -363,16 +406,36 @@ try {
             $stmtHist = $pdo->prepare("INSERT INTO emprestimos (patrimonio_id, sala_origem_id, sala_destino_id) VALUES (?, ?, ?)");
             $stmtHist->execute([$dados['patrimonio_id'], $dados['sala_origem_id'], $dados['sala_destino_id']]);
 
-            // Marca lida
-            $pdo->prepare("UPDATE notificacoes SET lida = 1 WHERE id = ?")->execute([$notificacao_id]);
+            // Notifica os envolvidos
+            $stmtFeedback = $pdo->prepare("INSERT INTO notificacoes (usuario_destino_id, titulo, mensagem) VALUES (?, ?, ?)");
+            
+            // 1. Notifica o solicitante
+            if (isset($dados['solicitante_id'])) {
+                $stmtFeedback->execute([
+                    $dados['solicitante_id'], 
+                    "Pedido de transferência aprovado", 
+                    "Seu pedido de transferência do patrimônio ID {$dados['patrimonio_id']} foi aprovado e o item já foi movido no sistema."
+                ]);
+            }
+            
+            // 2. Notifica o receptor (quem aceitou)
+            $stmtFeedback->execute([
+                $notif['usuario_destino_id'], 
+                "Transferência Concluída", 
+                "O patrimônio ID {$dados['patrimonio_id']} foi oficialmente transferido para sua sala."
+            ]);
+
+            // Marca lida (some do sininho) e registra o status
+            $pdo->prepare("UPDATE notificacoes SET lida = 1, resultado_acao = 'aprovado' WHERE id = ?")->execute([$notificacao_id]);
 
             $pdo->commit();
-            echo json_encode(["status" => "success", "message" => "Transferência concluída com sucesso!"]);
+            echo json_encode(["status" => "success", "message" => "Transferência concluída e professores notificados!"]);
             break;
 
         case 'listar_ocorrencias':
             $stmt = $pdo->query("
-                SELECT o.id, o.data_ocorrencia, o.status, p.nome_descricao, p.numero_qrcode, s.nome_sala as encontrada_em
+                SELECT o.id, o.data_ocorrencia, o.status, o.tipo, o.descricao_problema, 
+                       p.nome_descricao, p.numero_qrcode, s.nome_sala as encontrada_em
                 FROM ocorrencias o
                 JOIN patrimonios p ON o.patrimonio_id = p.id
                 JOIN salas s ON o.sala_encontrada_id = s.id
@@ -416,7 +479,7 @@ try {
                 break;
             }
             $stmt = $pdo->prepare("
-                SELECT id, titulo, mensagem, dados_json, lida, criada_em
+                SELECT id, titulo, mensagem, dados_json, lida, criada_em, resultado_acao
                 FROM notificacoes
                 WHERE usuario_destino_id = ?
                 ORDER BY criada_em DESC
@@ -440,6 +503,16 @@ try {
             // Marca TODAS as notificações como lidas
             $pdo->prepare("UPDATE notificacoes SET lida = TRUE WHERE usuario_destino_id = ?")->execute([$userId]);
             echo json_encode(["status" => "success", "message" => "Todas as notificações foram marcadas como lidas."]);
+            break;
+
+        case 'resolver_ocorrencia':
+            $id = $_POST['id'] ?? null;
+            if (!$id) throw new Exception("ID da ocorrência obrigatório.");
+            
+            $stmt = $pdo->prepare("UPDATE ocorrencias SET status = 'resolvida' WHERE id = ?");
+            $stmt->execute([$id]);
+            
+            echo json_encode(["status" => "success", "message" => "Ocorrência resolvida com sucesso!"]);
             break;
 
         default:

@@ -125,6 +125,20 @@ const api = {
         return await res.json();
     },
 
+    getOcorrencias: async () => {
+        const res = await fetch(`${API_ROUTES}?action=listar_ocorrencias`);
+        const data = await res.json();
+        return data.data || [];
+    },
+
+    resolverOcorrencia: async (id) => {
+        const formData = new FormData();
+        formData.append('action', 'resolver_ocorrencia');
+        formData.append('id', id);
+        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
+        return await res.json();
+    },
+
     // Empréstimo
     registrarEmprestimo: async (patrimonio_ids, sala_origem_id, sala_destino_id) => {
         const formData = new FormData();

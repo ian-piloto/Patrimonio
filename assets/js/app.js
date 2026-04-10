@@ -161,15 +161,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Inicia o polling de notificações (apenas para admins, configurado após checkSession)
     window.iniciarPollingNotificacoes = function() {
-        console.log("Iniciando polling de notificações...");
+        console.log("Iniciando polling centralizado...");
         // Carrega imediatamente
         carregarNotificacoes();
+        if (window.usuarioTipo === 'admin') {
+            carregarTabelaOcorrenciasAdmin(true);
+            carregarPedidosTransferenciaAdmin(true); 
+        }
+
         // Polling a cada 30 segundos
         if (notificacaoPollingInterval) clearInterval(notificacaoPollingInterval);
         notificacaoPollingInterval = setInterval(() => {
             console.log("Executando polling periódico...");
             carregarNotificacoes();
+            if (window.usuarioTipo === 'admin') {
+                carregarTabelaOcorrenciasAdmin(true);
+                carregarPedidosTransferenciaAdmin(true);
+            }
         }, 30000);
+    };
+
+    // Sistema de Notificações Toast (Sem som)
+    window.showToast = function(titulo, mensagem) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = 'toast-alert fade-in';
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="bi bi-exclamation-circle-fill"></i></div>
+            <div class="toast-content">
+                <strong>${titulo}</strong>
+                <p>${mensagem}</p>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()"><i class="bi bi-x"></i></button>
+        `;
+
+        container.appendChild(toast);
+
+        // Remove automaticamente após 6 segundos
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 500);
+            }
+        }, 6000);
     };
 
     // ==========================================
@@ -197,6 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetSec = document.getElementById(targetId);
         if (targetSec) {
             targetSec.classList.remove('hidden');
+            
+            // Controle de largura (Admin View)
+            const mainApp = document.querySelector('.app-main');
+            if (mainApp) {
+                if (targetId === 'tab-ocorrencias' && window.usuarioTipo === 'admin') {
+                    mainApp.classList.add('admin-view');
+                } else {
+                    mainApp.classList.remove('admin-view');
+                }
+            }
+
             // Carrega dinâmicas
             aoAbrirAba(targetId);
         }
@@ -261,6 +308,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (abaId === 'tab-emprestimos') {
             await carregarDadosEmprestimo();
+            if (window.usuarioTipo === 'admin') {
+                await carregarPedidosTransferenciaAdmin();
+            }
         }
     }
 
@@ -854,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Mapeamento baseado no seu arquivo original (indices 1-based no ExcelJS)
                 const ambienteFull = `${item.codigo_unidade || ''} ${item.bloco || ''} ${item.sigla_sala || ''} ${item.nome_sala || ''}`.trim();
-                const status = (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando";
+                const status = (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Encontrado" : "Faltando";
 
                 row.getCell(1).value = item.codigo_localizacao || "";      // A: LOCALIZ.
                 row.getCell(2).value = ambienteFull;                      // B: NOME DO AMBIENTE
@@ -863,7 +913,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 row.getCell(5).value = "";                                // E: DATA INCORP
                 row.getCell(6).value = item.nome_descricao;               // F: DENOMINAÇÃO
                 row.getCell(7).value = item.nome_professor || "";         // G: RESPONSÁVEL
-                row.getCell(8).value = status;                            // H: STATUS/OCORRÊNCIA
+                row.getCell(13).value = status;                           // M: STATUS (Encontrado ou Faltando)
                 
                 // Estilização básica das bordas para as novas linhas se necessário, 
                 // mas o ExcelJS herda estilos se a linha já existir no template.
@@ -889,7 +939,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     "Descrição": item.nome_descricao,
                     "QR Code": item.numero_qrcode,
                     "Responsável": item.nome_professor || "Não atribuído",
-                    "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Auditoria OK" : "Faltando"
+                    "Status": (typeof patrimonioFoiLidoNaSessao === 'function' && patrimonioFoiLidoNaSessao(item.numero_qrcode)) ? "Encontrado" : "Faltando"
                 }));
                 const wb = XLSX.utils.book_new();
                 const ws = XLSX.utils.json_to_sheet(dadosExcel);
@@ -910,20 +960,125 @@ document.addEventListener('DOMContentLoaded', () => {
     // FUNCIONALIDADE: OCORRÊNCIAS
     // ==========================================
     async function carregarDadosOcorrencias() {
-        const selectSala = $('#selectSalaOcorrencia');
-        const selectSalaDestino = $('#selectSalaDestinoOcorrencia');
-
-        // Se já carregou salas, só popula
-        const salas = window.listaSalasCache || await api.getSalas();
-        window.listaSalasCache = salas;
+        console.log("Iniciando carregamento da aba de ocorrências...");
         
-        populateSelect('selectSalaOcorrencia', salas, 'id', 'nome_sala');
-        populateSelect('selectSalaDestinoOcorrencia', salas, 'id', 'nome_sala', 'Selecione a sala de destino...');
+        // Controle de visibilidade da tabela administrativo (Prioridade Máxima)
+        const containerOcorrencias = document.getElementById('containerHistoricoOcorrencias');
+        const userTipo = window.usuarioTipo || (typeof auth !== 'undefined' ? localStorage.getItem('usuario_tipo') : null);
 
-        // Puxa sala salva
-        const salaSalva = localStorage.getItem('usuario_sala_id');
-        if (salaSalva) selectSala.value = salaSalva;
+        if (window.usuarioTipo === 'admin' || userTipo === 'admin') {
+            console.log("Admin detectado. Exibindo central de controle...");
+            if (containerOcorrencias) containerOcorrencias.classList.remove('hidden');
+            carregarTabelaOcorrenciasAdmin();
+        } else {
+            if (containerOcorrencias) containerOcorrencias.classList.add('hidden');
+        }
+
+        try {
+            const selectSala = $('#selectSalaOcorrencia');
+            const selectSalaDestino = $('#selectSalaDestinoOcorrencia');
+
+            // Popula selects de salas
+            const salas = window.listaSalasCache || await api.getSalas();
+            window.listaSalasCache = salas;
+            
+            populateSelect('selectSalaOcorrencia', salas, 'id', 'nome_sala');
+            populateSelect('selectSalaDestinoOcorrencia', salas, 'id', 'nome_sala', 'Selecione a sala de destino...');
+
+            // Puxa sala salva do localStorage para facilitar o envio
+            const salaSalva = localStorage.getItem('usuario_sala_id');
+            if (salaSalva && selectSala) selectSala.value = salaSalva;
+        } catch (err) {
+            console.error("Erro ao preparar formulário de ocorrências:", err);
+        }
     }
+
+    // Variável para rastrear novas ocorrências no polling
+    window.ultimoIdOcorrencia = null;
+
+    async function carregarTabelaOcorrenciasAdmin(silencioso = false) {
+        const tbody = document.getElementById('tbodyOcorrencias');
+        if (!tbody) return;
+
+        try {
+            const data = await api.getOcorrencias();
+            
+            // Detecta novas ocorrências (apenas se não for a primeira carga)
+            if (window.ultimoIdOcorrencia !== null && data.length > 0) {
+                const novosItens = data.filter(item => item.id > window.ultimoIdOcorrencia);
+                if (novosItens.length > 0) {
+                    const plural = novosItens.length > 1;
+                    showToast(
+                        `${novosItens.length} Nova${plural ? 's' : ''} Ocorrência${plural ? 's' : ''}!`, 
+                        `Existem novos incidentes registrados que precisam de sua atenção.`
+                    );
+                }
+            }
+            
+            // Atualiza o último ID visto
+            if (data.length > 0) {
+                window.ultimoIdOcorrencia = Math.max(...data.map(i => i.id));
+            } else {
+                window.ultimoIdOcorrencia = 0;
+            }
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">Nenhuma ocorrência registrada.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                const dataObj = new Date(item.data_ocorrencia);
+                const dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' ' + dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                
+                const isResolvida = item.status === 'resolvida' || item.status === 'Resolvido';
+                
+                let statusBadge = '';
+                if (isResolvida) {
+                    statusBadge = '<span class="badge badge-success-soft"><i class="bi bi-check-all"></i> Resolvido</span>';
+                } else {
+                    statusBadge = '<span class="badge badge-warning-soft">Pendente</span>';
+                }
+
+                const btnAcao = isResolvida ? 
+                    '<span class="text-success" style="font-size: 0.8rem; font-weight: 600;">Concluído</span>' : 
+                    `<button class="btn-success-mini" onclick="finalizarOcorrenciaAdmin(${item.id})" style="padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; background: var(--success); color: white;">Resolver</button>`;
+
+                return `
+                    <tr title="${item.descricao_problema || 'Sem descrição'}" style="${isResolvida ? 'background: rgba(46, 139, 87, 0.03); opacity: 0.8;' : ''}">
+                        <td><span class="list-item-badge" style="font-size: 0.7rem;">${item.numero_qrcode}</span></td>
+                        <td><strong style="font-size: 0.85rem;">${item.nome_descricao}</strong></td>
+                        <td><span style="font-size: 0.85rem;">${item.encontrada_em}</span></td>
+                        <td><span class="badge badge-primary-soft" style="font-size: 0.75rem;">${item.tipo}</span></td>
+                        <td><small>${dataFormatada}</small></td>
+                        <td>${statusBadge}</td>
+                        <td style="text-align: center;">${btnAcao}</td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (e) {
+            console.error(e);
+            if (!silencioso) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-danger">Erro ao carregar dados.</td></tr>';
+            }
+        }
+    }
+
+    window.finalizarOcorrenciaAdmin = async function(id) {
+        if (!confirm("Deseja marcar esta ocorrência como resolvida?")) return;
+
+        try {
+            const res = await api.resolverOcorrencia(id);
+            if (res.status === 'success') {
+                await carregarTabelaOcorrenciasAdmin(true);
+            } else {
+                alert(res.message);
+            }
+        } catch (e) {
+            alert("Erro de conexão ao resolver ocorrência.");
+        }
+    };
 
     // Lógica para mostrar/esconder a sala de destino baseada no tipo de ocorrência
     const tipoOcorrenciaSelect = $('#tipoOcorrencia');
@@ -986,6 +1141,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectDestino = $('#selectSalaEmprestimoDestino');
         const containerItens = $('#listaItensParaTransferir');
 
+        // Se for admin, garante visibilidade da central de aprovação
+        const containerAdmin = document.getElementById('containerAprovacaoTransferencias');
+        if (window.usuarioTipo === 'admin') {
+            if (containerAdmin) containerAdmin.classList.remove('restricted-access', 'hidden');
+        }
+
         // Carregar Salas
         const salas = window.listaSalasCache || await api.getSalas();
         window.listaSalasCache = salas;
@@ -995,16 +1156,170 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Tentar pré-selecionar a sala logada na ORIGEM
         const salaLogadaId = localStorage.getItem('usuario_sala_id');
-        if (salaLogadaId) {
+        if (salaLogadaId && selectOrigem) {
             selectOrigem.value = salaLogadaId;
             carregarItensParaTransferencia(salaLogadaId);
         }
 
         // Listener para mudar a lista de itens ao mudar a origem
-        selectOrigem.addEventListener('change', (e) => {
-            carregarItensParaTransferencia(e.target.value);
-        });
+        if (selectOrigem) {
+            selectOrigem.addEventListener('change', (e) => {
+                const sId = e.target.value;
+                if (sId) {
+                    carregarItensParaTransferencia(sId);
+                } else {
+                    containerItens.innerHTML = '<p class="text-muted text-center" style="padding:10px;">Selecione primeiro a sala de origem para listar os itens.</p>';
+                }
+            });
+        }
     }
+
+    async function carregarPedidosTransferenciaAdmin(silencioso = false) {
+        const tbody = document.getElementById('tbodyAprovacaoTransferencias');
+        if (!tbody) return;
+
+        try {
+            const notifications = await api.getNotificacoes();
+            const pedidos = notifications.filter(n => {
+                if (!n.dados_json) return false;
+                try {
+                    const d = JSON.parse(n.dados_json);
+                    return d.type === 'TRANSFER_EXECUTE_ADMIN';
+                } catch(e) { return false; }
+            });
+
+            if (pedidos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Nenhum pedido aguardando aprovação ou histórico.</td></tr>';
+                return;
+            }
+
+            // Precisamos buscar nomes das salas para exibir melhor
+            const salas = window.listaSalasCache || await api.getSalas();
+
+            tbody.innerHTML = pedidos.map(p => {
+                const d = JSON.parse(p.dados_json);
+                const salaOrigem = salas.find(s => s.id == d.sala_origem_id)?.nome_sala || "Origem Desconhecida";
+                const salaDestino = salas.find(s => s.id == d.sala_destino_id)?.nome_sala || "Destino Desconhecido";
+                const data = new Date(p.criada_em).toLocaleDateString('pt-BR');
+
+                // Lógica de Status do Histórico
+                let acaoHTML = '';
+                if (!p.resultado_acao) {
+                    acaoHTML = `
+                        <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                            <button class="btn-approve-admin" onclick="executarTransferenciaAdmin(${p.id})" title="Aprovar e Efetivar">
+                                <i class="bi bi-check-circle-fill"></i> Aprovar
+                            </button>
+                            <button class="btn-decline-admin" onclick="recusarTransferenciaAdmin(${p.id})" title="Recusar">
+                                <i class="bi bi-x-circle"></i> Recusar
+                            </button>
+                        </div>
+                    `;
+                } else if (p.resultado_acao === 'aprovado') {
+                    acaoHTML = `<span class="badge badge-success-soft" style="font-size:0.85rem; padding: 8px 15px; width: 100%; text-align: center; border: 1px solid #1e5c3a;"><i class="bi bi-check-all"></i> Aprovado</span>`;
+                } else if (p.resultado_acao === 'recusado') {
+                    acaoHTML = `<span class="badge badge-danger-soft" style="font-size:0.85rem; padding: 8px 15px; width: 100%; text-align: center; border: 1px solid var(--senai-red);"><i class="bi bi-x-circle"></i> Recusado</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td><strong style="font-size: 0.85rem;"><i class="bi bi-box-seam"></i> Item #${d.patrimonio_id}</strong></td>
+                        <td><span class="badge badge-primary-soft">${salaOrigem}</span></td>
+                        <td><span class="badge badge-success-soft">${salaDestino}</span></td>
+                        <td><small>${data}</small></td>
+                        <td>${acaoHTML}</td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (e) {
+            console.error("Erro ao carregar pedidos de transferência", e);
+        }
+    }
+
+    window.recusarTransferenciaAdmin = async function(notifId) {
+        if (!confirm("Deseja recusar este pedido de transferência?")) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'recusar_transferencia_admin');
+            formData.append('notificacao_id', notifId);
+
+            const res = await fetch('api/routes.php', { method: 'POST', body: formData }).then(r => r.json());
+            
+            if (res.status === 'success') {
+                showToast("Pedido Recusado", res.message);
+                carregarPedidosTransferenciaAdmin();
+                carregarNotificacoes();
+            } else {
+                alert(res.message);
+            }
+        } catch (e) { alert("Erro de conexão."); }
+    };
+
+    window.exportarTransferenciasExcel = async function() {
+        try {
+            const notifications = await api.getNotificacoes();
+            const pedidos = notifications.filter(n => {
+                if (!n.dados_json) return false;
+                try {
+                    const d = JSON.parse(n.dados_json);
+                    return d.type === 'TRANSFER_EXECUTE_ADMIN';
+                } catch(e) { return false; }
+            });
+
+            if (pedidos.length === 0) {
+                alert("Nenhum histórico de transferência encontrado para exportar.");
+                return;
+            }
+
+            // Precisamos de dados auxiliares (Salas e Patrimônios) para o relatório completo
+            const salas = window.listaSalasCache || await api.getSalas();
+            
+            // Busca simplificada de todos os patrimônios para o de-para de IDs
+            // (Em um sistema real com muito dados, faríamos uma busca filtrada, mas aqui o volume permite)
+            // Vou simular um mini-cache de patrimônios se não houver
+            const resPat = await api.getOcorrencias(); // Ocorrencias traz dados de patrimônio também
+            const patData = resPat.data || [];
+
+            const excelData = pedidos.map(p => {
+                const d = JSON.parse(p.dados_json);
+                const salaOrigemObj = salas.find(s => s.id == d.sala_origem_id);
+                const salaDestinoObj = salas.find(s => s.id == d.sala_destino_id);
+                
+                // Busca o nome do item no log de ocorrências ou dados conhecidos
+                const itemLog = patData.find(od => od.numero_qrcode == d.patrimonio_id || od.id == d.patrimonio_id);
+                
+                return {
+                    "Data/Hora": new Date(p.criada_em).toLocaleString('pt-BR'),
+                    "Patrimônio ID/QR": d.patrimonio_id,
+                    "Item": itemLog ? itemLog.nome_descricao : "Patrimônio #" + d.patrimonio_id,
+                    "Sala Origem": salaOrigemObj ? salaOrigemObj.nome_sala : "ID: " + d.sala_origem_id,
+                    "Professor Solicitante": salaOrigemObj ? salaOrigemObj.nome_professor : "Não identificado",
+                    "Sala Destino": salaDestinoObj ? salaDestinoObj.nome_sala : "ID: " + d.sala_destino_id,
+                    "Professor Receptor": salaDestinoObj ? salaDestinoObj.nome_professor : "Não identificado",
+                    "Status": p.resultado_acao ? p.resultado_acao.toUpperCase() : "AGUARDANDO"
+                };
+            });
+
+            // Geração do Excel usando SheetJS (XLSX) para este caso simples sem template
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Ajuste de largura das colunas básico
+            const wscols = [
+                {wch: 20}, {wch: 15}, {wch: 30}, {wch: 20}, {wch: 25}, {wch: 20}, {wch: 25}, {wch: 15}
+            ];
+            ws['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(wb, ws, "Histórico Transferências");
+            XLSX.writeFile(wb, `Relatorio_Transferencias_${new Date().getTime()}.xlsx`);
+
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao gerar o arquivo Excel.");
+        }
+    };
 
     async function carregarItensParaTransferencia(salaId) {
         const container = $('#listaItensParaTransferir');

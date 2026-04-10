@@ -429,7 +429,17 @@ button {
 }
 
 .badge-transferencia { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-.badge-alerta { background: rgba(225, 25, 49, 0.1); color: var(--senai-red); }
+.badge-danger-soft { background: rgba(225, 25, 49, 0.1); color: var(--senai-red); }
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* Botões de Ação Premium Admin */
 .badge-info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 
 .notificacao-content {
@@ -1066,4 +1076,210 @@ footer {
     font-size: 0.95rem;
     margin-bottom: 1.5rem;
     line-height: 1.4;
+}
+
+/* ==================================
+   TABELAS PREMIUM E BADGES 
+   ================================== */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.premium-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: var(--white);
+}
+
+.premium-table th {
+    background: rgba(43, 52, 69, 0.03);
+    color: var(--text-main);
+    font-weight: 700;
+    text-align: left;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-color);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.5px;
+}
+
+.premium-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+    vertical-align: middle;
+}
+
+.premium-table tr:last-child td {
+    border-bottom: none;
+}
+
+.premium-table tr:hover {
+    background: rgba(225, 25, 49, 0.01);
+}
+
+/* Status Badges Soft Design */
+.badge-primary-soft { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+.badge-success-soft { background: rgba(46, 139, 87, 0.1); color: #1e5c3a; }
+.badge-warning-soft { background: rgba(245, 158, 11, 0.1); color: #92400e; }
+.badge-secondary-soft { background: rgba(107, 114, 128, 0.1); color: #374151; }
+.badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+/* Botões de Ação Premium Admin */
+.btn-approve-admin {
+    background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.btn-approve-admin:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 6px 15px rgba(34, 197, 94, 0.3);
+    filter: brightness(1.1);
+}
+
+.btn-decline-admin {
+    background: rgba(225, 25, 49, 0.05);
+    color: var(--senai-red);
+    border: 1.5px solid var(--senai-red);
+    padding: 7px 15px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-decline-admin:hover {
+    background: var(--senai-red);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(225, 25, 49, 0.2);
+}
+
+.btn-approve-admin i, .btn-decline-admin i {
+    font-size: 1rem;
+}
+
+/* Responsividade de Tabela para Mobile */
+@media (max-width: 600px) {
+    .premium-table th, .premium-table td {
+        padding: 10px 12px;
+    }
+    .premium-table th:nth-child(5), 
+    .premium-table td:nth-child(5) {
+        display: none; /* Esconde data em telas muito pequenas */
+    }
+}
+
+/* ==================================
+   VISUALIZAÇÃO AMPLIADA (ADMIN)
+   ================================== */
+@media (min-width: 769px) {
+    .app-main.admin-view {
+        max-width: 1200px; /* Expande para admin */
+        transition: max-width 0.4s ease;
+    }
+
+    /* Mantém formulários centralizados mesmo em tela larga */
+    .app-main.admin-view .glass-box:not(#containerHistoricoOcorrencias .glass-box) {
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Centraliza também os headers das seções que não são da tabela */
+    .app-main.admin-view .section-header:not(#containerHistoricoOcorrencias .section-header) {
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+/* ==================================
+   SISTEMA DE TOASTS (NOTIFICAÇÕES)
+   ================================== */
+.toast-container {
+    position: fixed;
+    top: 70px; /* Abaixo do header */
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast-alert {
+    pointer-events: auto;
+    background: var(--white);
+    border-left: 4px solid var(--warning);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 20px;
+    min-width: 300px;
+    max-width: 400px;
+    position: relative;
+    border: 1px solid var(--border-color);
+}
+
+.toast-icon {
+    font-size: 1.5rem;
+    color: var(--warning);
+}
+
+.toast-content strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.toast-content p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 2px;
+}
+
+.fade-out {
+    animation: fadeOut 0.5s ease forwards;
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(20px); }
 }
