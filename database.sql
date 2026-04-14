@@ -1,5 +1,5 @@
 -- Sistema de Gestão de Patrimônios SENAI
--- Snapshot Gerado Automaticamente em: 2026-04-14 15:20:18
+-- Snapshot Gerado Automaticamente em: 2026-04-14 15:27:35
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP DATABASE IF EXISTS patrimonio_senai;
