@@ -92,9 +92,8 @@
 
             <div class="scanner-container">
                 <div id="reader" width="100%"></div>
-                <button id="btnToggleScanner" class="btn-primary mt-3 w-100" onclick="toggleScanner()"
-                    style="display: none;">
-                    <i class="bi bi-pause-circle"></i> Pausar Leitor
+                <button id="btnToggleScanner" class="btn-primary mt-3 w-100" onclick="toggleScanner()">
+                    <i class="bi bi-play-circle"></i> Ligar Câmera
                 </button>
             </div>
 
@@ -477,27 +476,27 @@
                 <form id="cadastroForm" class="standard-form">
                     <div class="form-group">
                         <label>Código QR da Etiqueta:</label>
-                        <input type="text" id="cadQrcode" class="form-control" required placeholder="Ex: SENAI-001"
+                        <input type="text" id="cadQrcode" class="form-control" placeholder="Ex: SENAI-001"
                             style="text-transform: uppercase;">
                     </div>
 
                     <div class="form-group">
                         <label>Nome / Descrição:</label>
-                        <input type="text" id="cadNome" class="form-control" required
+                        <input type="text" id="cadNome" class="form-control"
                             placeholder="Ex: Notebook Dell Inspiron">
                     </div>
 
                     <div class="form-group">
                         <label>Categoria:</label>
-                        <select id="cadCategoria" class="form-control" required>
-                            <option value="">Carregando categorias...</option>
+                        <select id="cadCategoria" class="form-control">
+                            <option value="">(Opcional) Selecione a categoria...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label>Sala Inicial:</label>
-                        <select id="cadSala" class="form-control" required>
-                            <option value="">Carregando salas...</option>
+                        <select id="cadSala" class="form-control">
+                            <option value="">(Opcional) Selecione a sala...</option>
                         </select>
                     </div>
 
@@ -663,19 +662,19 @@
             <form id="formCadastrarPatrimonio" class="standard-form mt-3">
                 <div class="form-group mb-2">
                     <label>Nº Inventário / QR Code:</label>
-                    <input type="text" id="reg_qrcode" class="form-control" placeholder="Ex: P001" required>
+                    <input type="text" id="reg_qrcode" class="form-control" placeholder="Ex: P001">
                 </div>
                 <div class="form-group mb-2">
                     <label>Nome / Descrição:</label>
-                    <input type="text" id="reg_nome" class="form-control" placeholder="Ex: Computador Dell i7" required>
+                    <input type="text" id="reg_nome" class="form-control" placeholder="Ex: Computador Dell i7">
                 </div>
                 <div class="form-group mb-2">
                     <label>Categoria:</label>
-                    <select id="reg_categoria" class="form-control" required></select>
+                    <select id="reg_categoria" class="form-control"></select>
                 </div>
                 <div class="form-group mb-3">
                     <label>Sala de Destino:</label>
-                    <select id="reg_sala" class="form-control" required></select>
+                    <select id="reg_sala" class="form-control"></select>
                 </div>
 
                 <div id="cadPatrimonioMessage" class="form-messages mb-2"></div>

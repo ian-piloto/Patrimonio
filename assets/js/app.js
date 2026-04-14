@@ -223,6 +223,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Torna global para poder ser chamada pelo scanner.js
     window.switchTab = function (targetId) {
+        // Salva a aba atual para persistência ao recarregar
+        localStorage.setItem('active_tab', targetId);
+
         // Atualiza botões
         navItems.forEach(btn => btn.classList.remove('active'));
         const activeBtn = document.querySelector(`.nav-item[data-target="${targetId}"]`);
@@ -256,6 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function aoAbrirAba(abaId) {
         if (abaId === 'tab-scanner') {
+            // Apenas inicializa as instâncias necessárias, mas NÃO liga a câmera automaticamente
+            initQRScanner();
+
             // Carrega salas no dropdown da auditoria
             if (!window.listaSalasCache) {
                 window.listaSalasCache = await api.getSalas();
@@ -264,35 +270,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const salaSalva = localStorage.getItem('usuario_sala_id');
             if (salaSalva) {
-                $('#selectSalaScanner').value = salaSalva;
-                carregarListaAuditoria(salaSalva); // Carrega a lista automaticamente
+                const selectScanner = $('#selectSalaScanner');
+                if (selectScanner) {
+                    selectScanner.value = salaSalva;
+                    carregarListaAuditoria(salaSalva);
+                }
             }
 
             // Atualiza a lista quando o usuário seleciona uma sala diferente
-            $('#selectSalaScanner').addEventListener('change', (e) => {
-                const sId = e.target.value;
-                if (sId) {
-                    carregarListaAuditoria(sId);
-                } else {
-                    document.getElementById('containerListaAuditoria').classList.add('hidden');
-                }
-            });
-
-            // Se o scanner não estiver rodando, inicia.
-            if (!window.scannerIniciado) {
-                initQRScanner();
-                window.scannerIniciado = true;
-            } else if (html5QrcodeScanner && html5QrcodeScanner.getState() === 3) { // 3 = PAUSED
-                html5QrcodeScanner.resume();
-                if (typeof atualizarBotaoScannerUI === 'function') atualizarBotaoScannerUI(true);
+            const selectSalaScanner = $('#selectSalaScanner');
+            if (selectSalaScanner && !selectSalaScanner.dataset.listenerAdded) {
+                selectSalaScanner.addEventListener('change', (e) => {
+                    const sId = e.target.value;
+                    if (sId) {
+                        carregarListaAuditoria(sId);
+                    } else {
+                        const container = document.getElementById('containerListaAuditoria');
+                        if (container) container.classList.add('hidden');
+                    }
+                });
+                selectSalaScanner.dataset.listenerAdded = "true";
             }
-        } else {
-            // Pausa a câmera se estiver em outra aba
-            if (html5QrcodeScanner && html5QrcodeScanner.getState() === 2) { // 2 = SCANNING
-                html5QrcodeScanner.pause(true);
-                if (typeof atualizarBotaoScannerUI === 'function') atualizarBotaoScannerUI(false);
-            }
-        }
+        } 
 
         if (abaId === 'tab-cadastro') {
             await carregarDadosCadastro();
@@ -314,8 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Início (Dispara a primeira aba)
-    aoAbrirAba('tab-scanner');
+    // Início (Recupera a última aba aberta ou padrão scanner)
+    const ultimaAba = localStorage.getItem('active_tab') || 'tab-scanner';
+    switchTab(ultimaAba);
 
 
     // ==========================================
@@ -348,8 +348,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoria = $('#cadCategoria').value;
         const salaId = $('#cadSala').value;
 
-        if (!qrcode || !nome || !categoria || !salaId) {
-            showMessage('cadastroMessage', 'Preencha todos os campos.', 'error');
+        if (!qrcode || !nome) {
+            showMessage('cadastroMessage', 'QR Code e Nome/Descrição são obrigatórios.', 'error');
             return;
         }
 
@@ -363,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Limpar apenas texto para facilitar múltiplos cadastros
                 $('#cadQrcode').value = '';
                 $('#cadNome').value = '';
+                // Limpa persistência específica desses campos
+                localStorage.removeItem('form_cadQrcode');
+                localStorage.removeItem('form_cadNome');
             } else {
                 showMessage('cadastroMessage', res.message, 'error');
             }
@@ -1126,6 +1129,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('containerSalaDestinoOcorrencia').classList.add('hidden');
                 // Limpa o select de patrimônio após o sucesso
                 $('#selectPatrimonioOcorrencia').innerHTML = '<option value="">Leia o QR Code na aba principal...</option>';
+                
+                // Limpa persistência específica
+                localStorage.removeItem('form_tipoOcorrencia');
+                localStorage.removeItem('form_descOcorrencia');
             } else {
                 showMessage('ocorrenciaMessage', res.message, 'error');
             }
@@ -1484,4 +1491,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.iniciarPollingNotificacoes === 'function') {
         window.iniciarPollingNotificacoes();
     }
+
+    // ==========================================
+    // PERSISTÊNCIA DE FORMULÁRIOS (SALVAR AO DIGITAR)
+    // ==========================================
+    const camposParaPersistir = [
+        'cadQrcode', 'cadNome', 'cadCategoria', 'cadSala',
+        'selectSalaOcorrencia', 'tipoOcorrencia', 'descOcorrencia', 'selectSalaDestinoOcorrencia',
+        'selectSalaEmprestimoOrigem', 'selectSalaEmprestimoDestino'
+    ];
+
+    // Restaura valores salvos
+    camposParaPersistir.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const salvo = localStorage.getItem(`form_${id}`);
+            if (salvo !== null) {
+                el.value = salvo;
+                // Trigger change para lógicas dependentes (ex: mostrar sala de destino)
+                if (id === 'tipoOcorrencia' && salvo === 'Transferência') {
+                    const container = document.getElementById('containerSalaDestinoOcorrencia');
+                    if (container) container.classList.remove('hidden');
+                }
+                // Se mudar sala de origem na transferência, precisa carregar os itens
+                if (id === 'selectSalaEmprestimoOrigem' && salvo) {
+                    carregarItensParaTransferencia(salvo);
+                }
+            }
+
+            // Adiciona ouvinte para salvar ao mudar
+            el.addEventListener('input', () => {
+                localStorage.setItem(`form_${id}`, el.value);
+            });
+            el.addEventListener('change', () => {
+                localStorage.setItem(`form_${id}`, el.value);
+            });
+        }
+    });
+
 });

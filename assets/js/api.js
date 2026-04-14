@@ -44,13 +44,30 @@ const api = {
         return await res.json();
     },
 
-    cadastrarPatrimonio: async (dados) => {
+    cadastrarPatrimonio: async (arg1, arg2, arg3, arg4) => {
         const formData = new FormData();
         formData.append('action', 'cadastrar_patrimonio');
-        formData.append('numero_qrcode', dados.numero_qrcode);
-        formData.append('nome_descricao', dados.nome_descricao);
-        formData.append('categoria_id', dados.categoria_id);
-        formData.append('sala_atual_id', dados.sala_atual_id);
+        
+        let qrcode, nome, categoria_id, sala_id;
+
+        // Se o primeiro argumento for um objeto (como vindo do modal)
+        if (typeof arg1 === 'object' && arg1 !== null) {
+            qrcode = arg1.numero_qrcode || '';
+            nome = arg1.nome_descricao || '';
+            categoria_id = arg1.categoria_id || '';
+            sala_id = arg1.sala_atual_id || '';
+        } else {
+            // Se vierem como argumentos individuais (como vindo da aba)
+            qrcode = arg1 || '';
+            nome = arg2 || '';
+            categoria_id = arg3 || '';
+            sala_id = arg4 || '';
+        }
+
+        formData.append('numero_qrcode', qrcode);
+        formData.append('nome_descricao', nome);
+        formData.append('categoria_id', categoria_id);
+        formData.append('sala_atual_id', sala_id);
 
         const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
         return await res.json();
@@ -86,17 +103,6 @@ const api = {
         return await res.json();
     },
 
-    cadastrarPatrimonio: async (qrcode, nome, categoria_id, sala_id) => {
-        const formData = new FormData();
-        formData.append('action', 'cadastrar_patrimonio');
-        formData.append('qrcode', qrcode);
-        formData.append('nome', nome);
-        formData.append('categoria_id', categoria_id);
-        formData.append('sala_id', sala_id);
-
-        const res = await fetch(API_ROUTES, { method: 'POST', body: formData });
-        return await res.json();
-    },
 
     importarLote: async (patrimonios, categoria_id, sala_id) => {
         const formData = new FormData();

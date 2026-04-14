@@ -138,8 +138,8 @@ try {
             $stmt = $pdo->prepare("
                 SELECT p.id, p.numero_qrcode, p.nome_descricao, c.nome as categoria, s.nome_sala, p.sala_atual_id 
                 FROM patrimonios p
-                JOIN categorias_patrimonio c ON p.categoria_id = c.id
-                JOIN salas s ON p.sala_atual_id = s.id
+                LEFT JOIN categorias_patrimonio c ON p.categoria_id = c.id
+                LEFT JOIN salas s ON p.sala_atual_id = s.id
                 WHERE p.numero_qrcode = ?
             ");
             $stmt->execute([$qrcode]);
@@ -158,8 +158,8 @@ try {
                        s.nome_sala, prof.nome as nome_professor,
                        s.codigo_localizacao, s.codigo_unidade, s.identificador_aux, s.bloco, s.sigla_sala
                 FROM patrimonios p
-                JOIN categorias_patrimonio c ON p.categoria_id = c.id
-                JOIN salas s ON p.sala_atual_id = s.id
+                LEFT JOIN categorias_patrimonio c ON p.categoria_id = c.id
+                LEFT JOIN salas s ON p.sala_atual_id = s.id
                 LEFT JOIN professores prof ON s.professor_id = prof.id
                 WHERE p.sala_atual_id = ?
             ");
@@ -178,9 +178,13 @@ try {
             $categoria_id = $_POST['categoria_id'] ?? null;
             $sala_id = $_POST['sala_atual_id'] ?? null;
 
-            if (empty($qrcode) || empty($nome) || !$categoria_id || !$sala_id) {
-                throw new Exception("Todos os campos (QR Code, Descrição, Categoria e Sala) são obrigatórios.");
+            if (empty($qrcode) || empty($nome)) {
+                throw new Exception("Os campos QR Code e Descrição são obrigatórios.");
             }
+            
+            // Permitir null para campos opcionais
+            $categoria_id = !empty($categoria_id) ? $categoria_id : null;
+            $sala_id = !empty($sala_id) ? $sala_id : null;
 
             // Verifica duplicidade de QR Code
             $stmtCheck = $pdo->prepare("SELECT id FROM patrimonios WHERE numero_qrcode = ?");

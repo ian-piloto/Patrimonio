@@ -17,52 +17,43 @@ function onScanFailure(error) {
 }
 
 function initQRScanner() {
-    const readerElement = document.getElementById("reader");
-    if (!readerElement) return; // Só inicializa na tela que tem scanner
+    if (html5QrcodeScanner) return; // Já instanciado
 
-    // Configuração focada em leitura mais rápida e flexível
+    const readerElement = document.getElementById("reader");
+    if (!readerElement) return;
+
+    html5QrcodeScanner = new Html5Qrcode("reader");
+}
+
+async function acionarCamera() {
+    initQRScanner();
+    
+    // Configuração de leitura
     const config = {
-        fps: 20, // Aumentado para 20 frames por segundo para identificar o código mais rápido
+        fps: 20,
         qrbox: function (viewfinderWidth, viewfinderHeight) {
-            // Cria a caixa de foco com tamanho 70% relativo ao tamanho da tela do celular/PC
             let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
             let qrboxSize = Math.floor(minEdgeSize * 0.7);
-            return {
-                width: qrboxSize,
-                height: qrboxSize
-            };
+            return { width: qrboxSize, height: qrboxSize };
         },
         aspectRatio: 1.0,
-        disableFlip: false, // Permite ler o código mesmo se estiver espelhado pela câmera
+        disableFlip: false,
         supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
     };
 
-    html5QrcodeScanner = new Html5Qrcode("reader");
-
-    // Tenta usar a câmera de trás
-    html5QrcodeScanner.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanFailure
-    ).then(() => {
-        document.getElementById('btnToggleScanner').style.display = 'block';
+    try {
+        // Tenta usar a câmera de trás
+        await html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure);
         atualizarBotaoScannerUI(true);
-    }).catch(err => {
-        console.error("Erro ao iniciar a câmera traseira, tentando default.", err);
-        // Fallback default
-        html5QrcodeScanner.start(
-            { facingMode: "user" },
-            config,
-            onScanSuccess,
-            onScanFailure
-        ).then(() => {
-            document.getElementById('btnToggleScanner').style.display = 'block';
+    } catch (err) {
+        console.error("Erro ao iniciar a câmera traseira, tentando frontal.", err);
+        try {
+            await html5QrcodeScanner.start({ facingMode: "user" }, config, onScanSuccess, onScanFailure);
             atualizarBotaoScannerUI(true);
-        }).catch(e => {
-            readerElement.innerHTML = `<div class="p-3 text-center text-danger">Não foi possível acessar a câmera do dispositivo. Verifique as permissões.</div>`;
-        });
-    });
+        } catch (e) {
+            alert("Não foi possível acessar a câmera do dispositivo.");
+        }
+    }
 }
 
 // Variáveis para guardar dados do fluxo da modal
@@ -286,17 +277,22 @@ function preencherOcorrenciaRapida(patId, qrCode) {
     document.getElementById('descOcorrencia').value = "O equipamento foi encontrado nesta sala durante uma auditoria de QR Code, porém seu registro indica outra sala.";
 }
 
-// Controla o botão Pausar/Retomar
-function toggleScanner() {
-    if (!html5QrcodeScanner) return;
+// Controla o botão Ligar/Desligar
+async function toggleScanner() {
+    if (!html5QrcodeScanner) initQRScanner();
 
     const state = html5QrcodeScanner.getState();
-    if (state === 2) { // SCANNING
-        html5QrcodeScanner.pause(true);
-        atualizarBotaoScannerUI(false);
-    } else if (state === 3) { // PAUSED
-        html5QrcodeScanner.resume();
-        atualizarBotaoScannerUI(true);
+    
+    // 2 = SCANNING, 3 = PAUSED
+    if (state === 2 || state === 3) {
+        try {
+            await html5QrcodeScanner.stop();
+            atualizarBotaoScannerUI(false);
+        } catch (e) {
+            console.error("Erro ao fechar câmera:", e);
+        }
+    } else {
+        await acionarCamera();
     }
 }
 
@@ -322,13 +318,16 @@ function submeterQRManual() {
 // Atualiza visual do botão
 function atualizarBotaoScannerUI(isScanning) {
     const btn = document.getElementById('btnToggleScanner');
+    const container = document.querySelector('.scanner-container');
     if (!btn) return;
 
     if (isScanning) {
-        btn.innerHTML = '<i class="bi bi-pause-circle"></i> Pausar Leitor';
-        btn.classList.replace('btn-warning', 'btn-primary');
+        btn.innerHTML = '<i class="bi bi-stop-circle"></i> Desligar Câmera';
+        btn.className = 'btn-primary w-100 mt-3 btn-camera-off';
+        if (container) container.classList.add('scanner-active');
     } else {
-        btn.innerHTML = '<i class="bi bi-play-circle"></i> Retomar Leitor';
-        btn.classList.replace('btn-primary', 'btn-warning');
+        btn.innerHTML = '<i class="bi bi-play-circle"></i> Ligar Câmera';
+        btn.className = 'btn-primary w-100 mt-3 btn-camera-on';
+        if (container) container.classList.remove('scanner-active');
     }
 }
